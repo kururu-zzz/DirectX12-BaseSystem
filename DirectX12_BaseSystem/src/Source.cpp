@@ -1,4 +1,6 @@
 #include "Window.h"
+#include "d3d.h"
+#include "dxgi.h"
 #include <ComUtil.h>
 #include <crtdbg.h>
 
@@ -36,9 +38,9 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	// ウィンドウの作成
 	auto hWnd = InitWindow(AppName, hInstance, WndProc, 1200, 900);
 
-	//乱数初期化
-	//auto Seed = timeGetTime();
-	//srand(Seed);
+	auto device = d3d::CreateDevice();
+	auto commandQueue = d3d::CreateCommandQueue(device.get());
+	auto swapChain = dxgi::CreateSwapChain(hWnd, device.get(), commandQueue.get());
 
 	::ShowWindow(hWnd, SW_SHOW);
 	::UpdateWindow(hWnd);

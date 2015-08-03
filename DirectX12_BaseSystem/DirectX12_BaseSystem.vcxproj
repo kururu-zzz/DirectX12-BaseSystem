@@ -19,11 +19,15 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\asset.cpp" />
     <ClCompile Include="src\d3d.cpp" />
+    <ClCompile Include="src\dxgi.cpp" />
     <ClCompile Include="src\Source.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\asset.h" />
     <ClInclude Include="src\d3d.h" />
+    <ClInclude Include="src\dxgi.h" />
     <ClInclude Include="src\Window.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
