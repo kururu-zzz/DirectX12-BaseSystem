@@ -73,7 +73,7 @@ namespace d3d
 	*	@param device : ID3D12Device*
 	*	@return value succeeded:return std::shared_ptr<ID3D12PipelineState>,failed:throw std::exception
 	*/
-	std::shared_ptr<ID3D12PipelineState> CreatePipeLineState(ID3D12Device * device,ID3D12RootSignature* rootSignature,ID3DBlob* vertexBlob,ID3DBlob* geometryBlob,ID3DBlob* pixelBlob,const D3D12_RASTERIZER_DESC& rasterizeDesc,const D3D12_BLEND_DESC& blend);
+	std::shared_ptr<ID3D12PipelineState> CreatePipeLineState(ID3D12Device * device,const D3D12_INPUT_LAYOUT_DESC& layout,ID3D12RootSignature* rootSignature,ID3DBlob* vertexBlob,ID3DBlob* geometryBlob,ID3DBlob* pixelBlob,const D3D12_RASTERIZER_DESC& rasterizeDesc,const D3D12_BLEND_DESC& blend);
 
 	/**
 	*	@brief create ID3D12DescriptorHeap and return it;

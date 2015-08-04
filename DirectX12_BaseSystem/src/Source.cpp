@@ -61,9 +61,15 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 		{ { 0.45f, -0.5, 0.0f },{ 0.0f, 1.0f, 0.0f, 1.0f } },
 		{ { -0.45f, -0.5f, 0.0f },{ 0.0f, 0.0f, 1.0f, 1.0f } }
 	};
+	D3D12_INPUT_ELEMENT_DESC layoutElem[] =
+	{
+		{ "IN_POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "IN_COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+	};
+	D3D12_INPUT_LAYOUT_DESC layout = { layoutElem,_countof(layoutElem) };
 	auto descriptorHeap = d3d::CreateDescriptorHeap(device.get());
 	auto renderTarget = d3d::CreateRenderTarget(device.get(), swapChain.get(), descriptorHeap.get());
-	auto pipeLine = d3d::CreatePipeLineState(device.get(), rootSignature.get(), vertexBlob.get(), geometryBlob.get(), pixelBlob.get(), d3d::CreateRasterizerDesc(), d3d::CreateBlendDesc(d3d::BlendMode::default));
+	auto pipeLine = d3d::CreatePipeLineState(device.get(), layout,rootSignature.get(), vertexBlob.get(), geometryBlob.get(), pixelBlob.get(), d3d::CreateRasterizerDesc(), d3d::CreateBlendDesc(d3d::BlendMode::default));
 	auto commandList = d3d::CreateCommandList(device.get(), commandAllocator.get(), pipeLine.get());
 
 	::ShowWindow(hWnd, SW_SHOW);

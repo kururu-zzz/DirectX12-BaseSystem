@@ -193,7 +193,8 @@ namespace d3d
 	}
 
 	std::shared_ptr<ID3D12PipelineState> CreatePipeLineState(
-		ID3D12Device * device,
+		ID3D12Device * device, 
+		const D3D12_INPUT_LAYOUT_DESC& layout,
 		ID3D12RootSignature* rootSignature,
 		ID3DBlob* vertexBlob,
 		ID3DBlob* geometryBlob,
@@ -201,15 +202,9 @@ namespace d3d
 		const D3D12_RASTERIZER_DESC& rasterizeDesc,
 		const D3D12_BLEND_DESC& blend)
 	{
-		D3D12_INPUT_ELEMENT_DESC layout[] =
-		{
-			{ "IN_POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-			{ "IN_COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
-		};
-
 		ID3D12PipelineState* pipelineState;
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC gpsDesc = {};
-		gpsDesc.InputLayout = { layout, sizeof(layout) / sizeof(D3D12_INPUT_ELEMENT_DESC) };
+		gpsDesc.InputLayout = layout;
 		gpsDesc.pRootSignature = rootSignature;
 		gpsDesc.VS = { reinterpret_cast<UINT8*>(vertexBlob->GetBufferPointer()), vertexBlob->GetBufferSize() };
 		gpsDesc.GS = { reinterpret_cast<UINT8*>(geometryBlob->GetBufferPointer()), geometryBlob->GetBufferSize() };
