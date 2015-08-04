@@ -4,6 +4,13 @@
 #include <ComUtil.h>
 #include <crtdbg.h>
 
+#include <DirectXMath.h>
+
+struct Vertex
+{
+	DirectX::XMFLOAT3 pos;
+	DirectX::XMFLOAT4 color;
+};
 
 // ウィンドウプロシージャ 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -40,7 +47,24 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	auto device = d3d::CreateDevice();
 	auto commandQueue = d3d::CreateCommandQueue(device.get());
-	auto swapChain = dxgi::CreateSwapChain(hWnd, device.get(), commandQueue.get());
+	auto swapChain = dxgi::CreateSwapChain(device.get(), commandQueue.get(), &hWnd);
+
+	auto commandAllocator = d3d::CreateCommandAllocator(device.get());
+	auto vertexBlob = d3d::CreateBlob("shader/Sample.hlsl", "RenderVS", "vs_5_0");
+	auto geometryBlob = d3d::CreateBlob("shader/Sample.hlsl", "RenderGS", "gs_5_0");
+	auto pixelBlob = d3d::CreateBlob("shader/Sample.hlsl", "RenderPS", "ps_5_0");
+
+	auto rootSignature = d3d::CreateRootSignature(device.get());
+	Vertex triangleVerts[] =
+	{
+		{ { 0.0f, 0.5f, 0.0f },{ 1.0f, 0.0f, 0.0f, 1.0f } },
+		{ { 0.45f, -0.5, 0.0f },{ 0.0f, 1.0f, 0.0f, 1.0f } },
+		{ { -0.45f, -0.5f, 0.0f },{ 0.0f, 0.0f, 1.0f, 1.0f } }
+	};
+	auto descriptorHeap = d3d::CreateDescriptorHeap(device.get());
+	auto renderTarget = d3d::CreateRenderTarget(device.get(), swapChain.get(), descriptorHeap.get());
+	auto pipeLine = d3d::CreatePipeLineState(device.get(), rootSignature.get(), vertexBlob.get(), geometryBlob.get(), pixelBlob.get(), d3d::CreateRasterizerDesc(), d3d::CreateBlendDesc(d3d::BlendMode::default));
+	auto commandList = d3d::CreateCommandList(device.get(), commandAllocator.get(), pipeLine.get());
 
 	::ShowWindow(hWnd, SW_SHOW);
 	::UpdateWindow(hWnd);
