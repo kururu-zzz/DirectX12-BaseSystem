@@ -4,9 +4,7 @@
 #include "dxgi.h"
 #include <d3dcompiler.h>
 #include <PlatformHelpers.h>
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers.
-#endif
+
 namespace d3d
 {
 	void ReleaseIUnknown(IUnknown* p)
@@ -173,20 +171,9 @@ namespace d3d
 	D3D12_RASTERIZER_DESC CreateRasterizerDesc()
 	{
 		D3D12_RASTERIZER_DESC rasterizerDesc = {};
-
 		
-		ZeroMemory(&rasterizerDesc, sizeof(D3D12_RASTERIZER_DESC));
 		rasterizerDesc.CullMode = D3D12_CULL_MODE::D3D12_CULL_MODE_BACK;
 		rasterizerDesc.FillMode = D3D12_FILL_MODE::D3D12_FILL_MODE_SOLID;
-		rasterizerDesc.FrontCounterClockwise = FALSE;
-		rasterizerDesc.DepthBias = D3D12_DEFAULT_DEPTH_BIAS;
-		rasterizerDesc.DepthBiasClamp = D3D12_DEFAULT_DEPTH_BIAS_CLAMP;
-		rasterizerDesc.SlopeScaledDepthBias = D3D12_DEFAULT_SLOPE_SCALED_DEPTH_BIAS;
-		rasterizerDesc.DepthClipEnable = TRUE;
-		rasterizerDesc.MultisampleEnable = FALSE;
-		rasterizerDesc.AntialiasedLineEnable = FALSE;
-		rasterizerDesc.ForcedSampleCount = 0;
-		rasterizerDesc.ConservativeRaster = D3D12_CONSERVATIVE_RASTERIZATION_MODE_OFF;
 		rasterizerDesc.DepthClipEnable = TRUE;
 
 		return rasterizerDesc;
@@ -223,7 +210,7 @@ namespace d3d
 		return std::shared_ptr<ID3D12PipelineState>(pipelineState,ReleaseIUnknown);
 	}
 
-	std::shared_ptr<ID3D12DescriptorHeap> CreateDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc)
+	std::shared_ptr<ID3D12DescriptorHeap> CreateDescriptorHeap(ID3D12Device* device, UINT* descriptorSize, D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc)
 	{
 		ID3D12DescriptorHeap* descriptorHeap;
 		D3D12_DESCRIPTOR_HEAP_DESC defaultDesc = {};
@@ -234,6 +221,7 @@ namespace d3d
 			defaultDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 			descriptHeapDesc = &defaultDesc;
 		}
+		device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 		DirectX::ThrowIfFailed(
 			device->CreateDescriptorHeap(
 				descriptHeapDesc, 
@@ -242,9 +230,9 @@ namespace d3d
 		return std::shared_ptr<ID3D12DescriptorHeap>(descriptorHeap, ReleaseIUnknown);
 	}
 
-	std::shared_ptr<ID3D12CommandList> CreateCommandList(ID3D12Device* device, ID3D12CommandAllocator* commandAllocator,ID3D12PipelineState* pipeLineState, D3D12_COMMAND_LIST_TYPE listType)
+	std::shared_ptr<ID3D12GraphicsCommandList> CreateCommandList(ID3D12Device* device, ID3D12CommandAllocator* commandAllocator,ID3D12PipelineState* pipeLineState, D3D12_COMMAND_LIST_TYPE listType)
 	{
-		ID3D12CommandList* commandList;
+		ID3D12GraphicsCommandList* commandList;
 		DirectX::ThrowIfFailed(
 			device->CreateCommandList(
 				0,
@@ -253,30 +241,32 @@ namespace d3d
 				pipeLineState,
 				IID_PPV_ARGS(&commandList)
 				));
-		return std::shared_ptr<ID3D12CommandList>(commandList, ReleaseIUnknown);
+		return std::shared_ptr<ID3D12GraphicsCommandList>(commandList, ReleaseIUnknown);
 	}
 
-	std::shared_ptr<ID3D12Resource> CreateRenderTarget(ID3D12Device * device, IDXGISwapChain * swapChain, ID3D12DescriptorHeap * descriptorHeap)
+	std::shared_ptr<ID3D12Resource> CreateRenderTarget(ID3D12Device * device,UINT bufferIndex ,IDXGISwapChain * swapChain, const D3D12_CPU_DESCRIPTOR_HANDLE& handle)
 	{
 		ID3D12Resource* renderTarget;
 		DirectX::ThrowIfFailed(
-			swapChain->GetBuffer(0, IID_PPV_ARGS(&renderTarget)));
-		device->CreateRenderTargetView(renderTarget, nullptr, descriptorHeap->GetCPUDescriptorHandleForHeapStart());
+			swapChain->GetBuffer(bufferIndex, IID_PPV_ARGS(&renderTarget)));
+		device->CreateRenderTargetView(renderTarget, nullptr, handle);
 		return std::shared_ptr<ID3D12Resource>(renderTarget,ReleaseIUnknown);
 	}
 
-	std::shared_ptr<ID3D12Resource> CreateResoruce(ID3D12Device* device, void* pData, size_t size)
+	std::shared_ptr<ID3D12Resource> CreateResoruce(ID3D12Device* device, size_t size)
 	{
 		ID3D12Resource* resource;
 		D3D12_HEAP_PROPERTIES heapProperties = {};
 		heapProperties.Type = D3D12_HEAP_TYPE::D3D12_HEAP_TYPE_UPLOAD;
+		heapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
 		heapProperties.CreationNodeMask = 1;
 		heapProperties.VisibleNodeMask = 1;
 
-		D3D12_RESOURCE_DESC resourceDesc;
-		resourceDesc.Width = size;
-		resourceDesc.Flags = D3D12_RESOURCE_FLAGS::D3D12_RESOURCE_FLAG_NONE;
-		resourceDesc.Alignment = 0;
+		D3D12_RESOURCE_DESC resourceDesc = { D3D12_RESOURCE_DIMENSION_BUFFER, 0, size, 1, 1, 1,
+			DXGI_FORMAT_UNKNOWN, 1, 0, D3D12_TEXTURE_LAYOUT_ROW_MAJOR, D3D12_RESOURCE_FLAG_NONE };
+
+
 		DirectX::ThrowIfFailed(
 			device->CreateCommittedResource(
 				&heapProperties,
@@ -287,5 +277,118 @@ namespace d3d
 				IID_PPV_ARGS(&resource)
 				));
 		return std::shared_ptr<ID3D12Resource>(resource, ReleaseIUnknown);
+	}
+	D3D12_VERTEX_BUFFER_VIEW CreateVetexBufferView(ID3D12Resource * resource,void* data, size_t vertexSize, UINT vertexNum)
+	{
+		D3D12_VERTEX_BUFFER_VIEW vertexBufferView;
+
+		UINT8* dataBegin;
+		resource->Map(0, nullptr, reinterpret_cast<void**>(&dataBegin));
+		memcpy(dataBegin, data, vertexSize*vertexNum);
+		resource->Unmap(0, nullptr);
+
+		vertexBufferView.BufferLocation = resource->GetGPUVirtualAddress();
+		vertexBufferView.StrideInBytes = vertexSize;
+		vertexBufferView.SizeInBytes = vertexSize*vertexNum;
+
+		return vertexBufferView;
+	}
+
+	std::shared_ptr<ID3D12Fence> CreateFence(ID3D12Device * device, D3D12_FENCE_FLAGS flag)
+	{
+		ID3D12Fence* fence;
+		DirectX::ThrowIfFailed(
+			device->CreateFence(
+				0, 
+				D3D12_FENCE_FLAG_NONE,
+				IID_PPV_ARGS(&fence)));
+		return std::shared_ptr<ID3D12Fence>(fence,ReleaseIUnknown);
+	}
+
+	void WaitForPreviousFrame(IDXGISwapChain3* swapChain, UINT *frameIndex, ID3D12CommandQueue* commandQueue, ID3D12Fence* fence, UINT64* fenceValue, HANDLE* fenceEvent)
+	{
+		// WAITING FOR THE FRAME TO COMPLETE BEFORE CONTINUING IS NOT BEST PRACTICE.
+		// This is code implemented as such for simplicity. More advanced samples 
+		// illustrate how to use fences for efficient resource usage.
+
+		// Signal and increment the fence value.
+		const UINT64 cfenceValue = *fenceValue;
+		DirectX::ThrowIfFailed(
+			commandQueue->Signal(fence, cfenceValue));
+		*fenceValue++;
+
+		// Wait until the previous frame is finished.
+		if (fence->GetCompletedValue() < cfenceValue)
+		{
+			DirectX::ThrowIfFailed(
+				fence->SetEventOnCompletion(cfenceValue, *fenceEvent));
+			WaitForSingleObject(*fenceEvent, INFINITE);
+		}
+
+		*frameIndex = swapChain->GetCurrentBackBufferIndex();
+	}
+
+	void PopulateCommandList(
+		ID3D12CommandAllocator* commandAllocator,
+		ID3D12GraphicsCommandList* commandList,
+		ID3D12PipelineState* pipeLineState,
+		ID3D12RootSignature* rootSignature,
+		ID3D12Resource** renderTarget,
+		ID3D12DescriptorHeap* descriptorHeap,
+		const UINT& descriptorSize,
+		const D3D12_VIEWPORT& viewport,
+		const D3D12_RECT& rect,
+		const D3D12_VERTEX_BUFFER_VIEW* vertexBuffer,
+		const int frameIndex
+		)
+	{
+		// Command list allocators can only be reset when the associated 
+		// command lists have finished execution on the GPU; apps should use 
+		// fences to determine GPU execution progress.
+		DirectX::ThrowIfFailed(commandAllocator->Reset());
+
+		// However, when ExecuteCommandList() is called on a particular command 
+		// list, that command list can then be reset at any time and must be before 
+		// re-recording.
+		DirectX::ThrowIfFailed(commandList->Reset(commandAllocator, pipeLineState));
+
+		// Set necessary state.
+		commandList->SetGraphicsRootSignature(rootSignature);
+		commandList->RSSetViewports(1, &viewport);
+		commandList->RSSetScissorRects(1, &rect);
+
+		D3D12_RESOURCE_BARRIER result;
+		result.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		result.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		result.Transition.pResource = renderTarget[frameIndex];
+		result.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+		result.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		result.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		
+		// Indicate that the back buffer will be used as a render target.
+		commandList->ResourceBarrier(1, &result);
+
+		D3D12_CPU_DESCRIPTOR_HANDLE handle;
+		handle.ptr = descriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + frameIndex * descriptorSize;
+		commandList->OMSetRenderTargets(1, &handle, FALSE, nullptr);
+
+		// Record commands.
+		const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
+		commandList->ClearRenderTargetView(handle, clearColor, 0, nullptr);
+		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		commandList->IASetVertexBuffers(0, 1, vertexBuffer);
+		commandList->DrawInstanced(3, 1, 0, 0);
+
+		result.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		result.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		result.Transition.pResource = renderTarget[frameIndex];
+		result.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		result.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+		result.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+
+		// Indicate that the back buffer will now be used to present.
+		commandList->ResourceBarrier(1, &result);
+
+		DirectX::ThrowIfFailed(commandList->Close());
 	}
 }

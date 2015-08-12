@@ -78,32 +78,72 @@ namespace d3d
 	/**
 	*	@brief create ID3D12DescriptorHeap and return it;
 	*	@param device : ID3D12Device*
+	*	@param descriptorSize : size of descriptor
 	*	@param descriptHeapDesc : D3D12_DESCRIPTOR_HEAP_DESC* user defined.if nullptr,use default;
 	*	@return value succeeded:return std::shared_ptr<ID3D12DescriptorHeap>,failed:throw std::exception
 	*/
-	std::shared_ptr<ID3D12DescriptorHeap> CreateDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc = nullptr);
+	std::shared_ptr<ID3D12DescriptorHeap> CreateDescriptorHeap(ID3D12Device* device,UINT* descriptorSize, D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc = nullptr);
 
 	/**
-	*	@brief create ID3D12CommandList and return it;
+	*	@brief create ID3D12GraphicsCommandList and return it;
 	*	@param device : ID3D12Device*
 	*	@param lineType : D3D12_COMMAND_LIST_TYPE,use same type when create ID3D12CommandList
 	*	@param commandAllocator : ID3D12CommandAllocator*
 	*	@param pipeLineState : ID3D12PipelineState*
-	*	@return value succeeded:return std::shared_ptr<ID3D12CommandList>,failed:throw std::exception
+	*	@return value succeeded:return std::shared_ptr<ID3D12GraphicsCommandList>,failed:throw std::exception
 	*/
-	std::shared_ptr<ID3D12CommandList> CreateCommandList(ID3D12Device* device, ID3D12CommandAllocator* commandAllocator, ID3D12PipelineState* pipeLineState,D3D12_COMMAND_LIST_TYPE listType = D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT );
+	std::shared_ptr<ID3D12GraphicsCommandList> CreateCommandList(ID3D12Device* device, ID3D12CommandAllocator* commandAllocator, ID3D12PipelineState* pipeLineState,D3D12_COMMAND_LIST_TYPE listType = D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT );
 
 	/**
 	*	@brief create ID3D12Resource for RenderTarget and return it;
 	*	@param device : ID3D12Device*
+	*	@param bufferIndex : index of buffer in swapChain
 	*	@param swapChain : IDXGISwapChain
-	*	@param descriptorHeap : ID3D12DescriptorHeap*
+	*	@param handle : D3D12_CPU_DESCRIPTOR_HANDLE
 	*	@return value succeeded:return std::shared_ptr<ID3D12Resource>,failed:throw std::exception
 	*/
-	std::shared_ptr<ID3D12Resource> CreateRenderTarget(ID3D12Device* device, IDXGISwapChain* swapChain,ID3D12DescriptorHeap* descriptorHeap);
+	std::shared_ptr<ID3D12Resource> CreateRenderTarget(ID3D12Device* device,UINT bufferIndex, IDXGISwapChain* swapChain,const D3D12_CPU_DESCRIPTOR_HANDLE& handle);
 
-	std::shared_ptr<ID3D12Resource> CreateResoruce(ID3D12Device* device, void* pData, size_t size);
+	/**
+	*	@brief create ID3D12Resource for RenderTarget and return it;
+	*	@param device : ID3D12Device*
+	*	@param size : size of resource data
+	*	@return value succeeded:return std::shared_ptr<ID3D12Resource>,failed:throw std::exception
+	*/
+	std::shared_ptr<ID3D12Resource> CreateResoruce(ID3D12Device* device, size_t size);
 
+	/**
+	*	@brief create D3D12_VERTEX_BUFFER_VIEW and return it;
+	*	@param resource : ID3D12Resource*
+	*	@param data : vertex data
+	*	@param vertexSize : size of vertex struct
+	*	@param vertexNum : num of vertex
+	*	@return value succeeded:return std::shared_ptr<D3D12_VERTEX_BUFFER_VIEW>,failed:throw std::exception
+	*/
+	D3D12_VERTEX_BUFFER_VIEW CreateVetexBufferView(ID3D12Resource* resource,void* data, size_t vertexSize,UINT vertexNum);
+
+	/**
+	*	@brief create ID3D12Fence and return it;
+	*	@param device : ID3D12Device*
+	*	@param flag : D3D12_FENCE_FLAGS ,default D3D12_FENCE_FLAG_NONE
+	*	@return value succeeded:return std::shared_ptr<ID3D12Fence>,failed:throw std::exception
+	*/
+	std::shared_ptr<ID3D12Fence> CreateFence(ID3D12Device* device, D3D12_FENCE_FLAGS flag = D3D12_FENCE_FLAGS::D3D12_FENCE_FLAG_NONE);
+
+	void WaitForPreviousFrame(IDXGISwapChain3* swapChain,UINT* frameIndex,ID3D12CommandQueue* commandQueue, ID3D12Fence* fence, UINT64* fenceValue, HANDLE* fenceEvent);
+
+	void PopulateCommandList(
+		ID3D12CommandAllocator* commandAllocator,
+		ID3D12GraphicsCommandList* commandList,
+		ID3D12PipelineState* pipeLineState,
+		ID3D12RootSignature* rootSignature,
+		ID3D12Resource** renderTarget,
+		ID3D12DescriptorHeap* descriptorHeap,
+		const UINT& descriptorSize,
+		const D3D12_VIEWPORT& viewport,
+		const D3D12_RECT& rect,
+		const D3D12_VERTEX_BUFFER_VIEW* vertexBuffer,
+		const int frameIndex);
 }
 
 #endif

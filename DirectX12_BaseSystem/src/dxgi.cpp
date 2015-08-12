@@ -17,15 +17,16 @@ namespace dxgi
 		DirectX::ThrowIfFailed(CreateDXGIFactory1(IID_PPV_ARGS(&factory)));
 		return std::shared_ptr<IDXGIFactory4>(factory, ReleaseIUnknown);
 	}
-	std::shared_ptr<IDXGIAdapter> CreateAdapter(IDXGIFactory4* factory)
+	std::shared_ptr<IDXGIAdapter3> CreateAdapter(IDXGIFactory4* factory)
 	{
-		IDXGIAdapter* adapter;
+		IDXGIAdapter3* adapter;
 		DirectX::ThrowIfFailed(factory->EnumWarpAdapter(IID_PPV_ARGS(&adapter)));
-		return std::shared_ptr<IDXGIAdapter>(adapter, ReleaseIUnknown);
+		return std::shared_ptr<IDXGIAdapter3>(adapter, ReleaseIUnknown);
 	}
-	std::shared_ptr<IDXGISwapChain> CreateSwapChain( ID3D12Device * device, ID3D12CommandQueue * commandQueue, const HWND* hWnd, DXGI_SWAP_CHAIN_DESC* swapChainDesc)
+	std::shared_ptr<IDXGISwapChain3> CreateSwapChain( ID3D12Device * device, ID3D12CommandQueue * commandQueue, const HWND* hWnd, DXGI_SWAP_CHAIN_DESC* swapChainDesc)
 	{
 		IDXGISwapChain* swapChain;
+		IDXGISwapChain3* swapChain3;
 
 		DXGI_SWAP_CHAIN_DESC defaultDesc = {};
 		if (!swapChainDesc)
@@ -47,7 +48,8 @@ namespace dxgi
 			swapChainDesc,
 			&swapChain
 			));
+		swapChain->QueryInterface(IID_PPV_ARGS(&swapChain3));
 
-		return std::shared_ptr<IDXGISwapChain>(swapChain, ReleaseIUnknown);
+		return std::shared_ptr<IDXGISwapChain3>(swapChain3, ReleaseIUnknown);
 	}
 }
