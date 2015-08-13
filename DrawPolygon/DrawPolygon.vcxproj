@@ -18,19 +18,9 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="src\d3d.cpp" />
-    <ClCompile Include="src\dxgi.cpp" />
-    <ClCompile Include="src\Source.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="src\d3d.h" />
-    <ClInclude Include="src\dxgi.h" />
-    <ClInclude Include="src\Window.h" />
-  </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{9EB7A9AE-B2A5-449B-AB20-798F6C32454A}</ProjectGuid>
-    <RootNamespace>DirectX12_BaseSystem</RootNamespace>
+    <ProjectGuid>{FC8DBB8E-E758-4EAE-8A11-02841FD32C76}</ProjectGuid>
+    <RootNamespace>DrawPolygon</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.10240.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -129,6 +119,16 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
   </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="src\d3d.cpp" />
+    <ClCompile Include="src\dxgi.cpp" />
+    <ClCompile Include="src\Source.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\d3d.h" />
+    <ClInclude Include="src\dxgi.h" />
+    <ClInclude Include="src\Window.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

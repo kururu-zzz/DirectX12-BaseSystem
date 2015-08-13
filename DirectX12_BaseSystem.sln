@@ -1,9 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Express 14 for Windows Desktop
+# Visual Studio 14
 VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DirectX12_BaseSystem", "DirectX12_BaseSystem\DirectX12_BaseSystem.vcxproj", "{9EB7A9AE-B2A5-449B-AB20-798F6C32454A}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DrawPolygon", "DrawPolygon\DrawPolygon.vcxproj", "{FC8DBB8E-E758-4EAE-8A11-02841FD32C76}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UseConstantBuffer", "UseConstantBuffer\UseConstantBuffer.vcxproj", "{1C38597A-D858-47CC-841F-3D855BE86603}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +25,22 @@ Global
 		{9EB7A9AE-B2A5-449B-AB20-798F6C32454A}.Release|x64.Build.0 = Release|x64
 		{9EB7A9AE-B2A5-449B-AB20-798F6C32454A}.Release|x86.ActiveCfg = Release|Win32
 		{9EB7A9AE-B2A5-449B-AB20-798F6C32454A}.Release|x86.Build.0 = Release|Win32
+		{FC8DBB8E-E758-4EAE-8A11-02841FD32C76}.Debug|x64.ActiveCfg = Debug|x64
+		{FC8DBB8E-E758-4EAE-8A11-02841FD32C76}.Debug|x64.Build.0 = Debug|x64
+		{FC8DBB8E-E758-4EAE-8A11-02841FD32C76}.Debug|x86.ActiveCfg = Debug|Win32
+		{FC8DBB8E-E758-4EAE-8A11-02841FD32C76}.Debug|x86.Build.0 = Debug|Win32
+		{FC8DBB8E-E758-4EAE-8A11-02841FD32C76}.Release|x64.ActiveCfg = Release|x64
+		{FC8DBB8E-E758-4EAE-8A11-02841FD32C76}.Release|x64.Build.0 = Release|x64
+		{FC8DBB8E-E758-4EAE-8A11-02841FD32C76}.Release|x86.ActiveCfg = Release|Win32
+		{FC8DBB8E-E758-4EAE-8A11-02841FD32C76}.Release|x86.Build.0 = Release|Win32
+		{1C38597A-D858-47CC-841F-3D855BE86603}.Debug|x64.ActiveCfg = Debug|x64
+		{1C38597A-D858-47CC-841F-3D855BE86603}.Debug|x64.Build.0 = Debug|x64
+		{1C38597A-D858-47CC-841F-3D855BE86603}.Debug|x86.ActiveCfg = Debug|Win32
+		{1C38597A-D858-47CC-841F-3D855BE86603}.Debug|x86.Build.0 = Debug|Win32
+		{1C38597A-D858-47CC-841F-3D855BE86603}.Release|x64.ActiveCfg = Release|x64
+		{1C38597A-D858-47CC-841F-3D855BE86603}.Release|x64.Build.0 = Release|x64
+		{1C38597A-D858-47CC-841F-3D855BE86603}.Release|x86.ActiveCfg = Release|Win32
+		{1C38597A-D858-47CC-841F-3D855BE86603}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

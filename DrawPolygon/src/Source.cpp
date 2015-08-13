@@ -78,7 +78,6 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	const int renderTargetNum = 2;
 	std::vector<std::shared_ptr<ID3D12Resource>> renderTargets;
 	renderTargets.reserve(renderTargetNum);
-
 	D3D12_CPU_DESCRIPTOR_HANDLE handle;
 	handle.ptr = descriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr;
 	for (UINT i = 0; i < renderTargetNum; ++i)
