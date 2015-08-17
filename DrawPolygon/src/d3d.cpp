@@ -315,7 +315,7 @@ namespace d3d
 		const UINT64 cfenceValue = *fenceValue;
 		DirectX::ThrowIfFailed(
 			commandQueue->Signal(fence, cfenceValue));
-		*fenceValue++;
+		*fenceValue += 1;
 
 		// Wait until the previous frame is finished.
 		if (fence->GetCompletedValue() < cfenceValue)

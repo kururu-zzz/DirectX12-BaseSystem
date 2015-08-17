@@ -49,7 +49,7 @@ namespace dxgi
 			&swapChain
 			));
 		swapChain->QueryInterface(IID_PPV_ARGS(&swapChain3));
-
+		swapChain->Release();
 		return std::shared_ptr<IDXGISwapChain3>(swapChain3, ReleaseIUnknown);
 	}
 }

@@ -103,9 +103,31 @@ namespace d3d
 		D3D12_ROOT_SIGNATURE_DESC defaultDesc = {};
 		if (!rootDesc)
 		{
-			defaultDesc.pParameters = nullptr;
+			D3D12_DESCRIPTOR_RANGE ranges[1];
+			D3D12_ROOT_PARAMETER rootParameters[1];
+
+			ranges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+			ranges[0].NumDescriptors = 1;
+			ranges[0].BaseShaderRegister = 0;
+			ranges[0].RegisterSpace = 0;
+			ranges[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+			rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+			rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
+			rootParameters[0].DescriptorTable.NumDescriptorRanges = 1;
+			rootParameters[0].DescriptorTable.pDescriptorRanges = &ranges[0];
+
+			defaultDesc.NumParameters = 1;
+			defaultDesc.pParameters = &rootParameters[0];
+			defaultDesc.NumStaticSamplers = 0;
 			defaultDesc.pStaticSamplers = nullptr;
-			defaultDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+			defaultDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+				D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS |
+				D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+				D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+				D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
+
 			rootDesc = &defaultDesc;
 		}
 		DirectX::ThrowIfFailed(
@@ -179,6 +201,18 @@ namespace d3d
 		return rasterizerDesc;
 	}
 
+	D3D12_INPUT_LAYOUT_DESC CreateInputLayout(const std::unordered_map<std::string, DXGI_FORMAT>& semantics)
+	{
+		static std::vector<D3D12_INPUT_ELEMENT_DESC> layoutElem;
+		for(auto& semantic : semantics)
+		{
+			D3D12_INPUT_ELEMENT_DESC element = { semantic.first.c_str(), 0, semantic.second, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+			layoutElem.emplace_back(element);
+		};
+		D3D12_INPUT_LAYOUT_DESC inputLayout = { layoutElem.data(),layoutElem.size() };
+		return inputLayout;
+	}
+
 	std::shared_ptr<ID3D12PipelineState> CreatePipeLineState(
 		ID3D12Device * device, 
 		const D3D12_INPUT_LAYOUT_DESC& layout,
@@ -210,7 +244,7 @@ namespace d3d
 		return std::shared_ptr<ID3D12PipelineState>(pipelineState,ReleaseIUnknown);
 	}
 
-	std::shared_ptr<ID3D12DescriptorHeap> CreateDescriptorHeap(ID3D12Device* device, UINT* descriptorSize, D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc)
+	std::shared_ptr<ID3D12DescriptorHeap> CreateDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc)
 	{
 		ID3D12DescriptorHeap* descriptorHeap;
 		D3D12_DESCRIPTOR_HEAP_DESC defaultDesc = {};
@@ -221,7 +255,6 @@ namespace d3d
 			defaultDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 			descriptHeapDesc = &defaultDesc;
 		}
-		device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 		DirectX::ThrowIfFailed(
 			device->CreateDescriptorHeap(
 				descriptHeapDesc, 
@@ -294,6 +327,22 @@ namespace d3d
 		return vertexBufferView;
 	}
 
+	void CreateConstantBufferView(ID3D12Device* device, ID3D12Resource * resource, void * data,size_t constantBufferSize, UINT8** dataBegin, ID3D12DescriptorHeap* descriptorHeap)
+	{
+		// Describe and create a constant buffer view.
+		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
+		cbvDesc.BufferLocation = resource->GetGPUVirtualAddress();
+		cbvDesc.SizeInBytes = (constantBufferSize + 255) & ~255;	// CB size is required to be 256-byte aligned.
+		device->CreateConstantBufferView(&cbvDesc, descriptorHeap->GetCPUDescriptorHandleForHeapStart());
+
+		ZeroMemory(data, constantBufferSize);
+		DirectX::ThrowIfFailed(
+			resource->Map(0, nullptr, reinterpret_cast<void**>(dataBegin)));
+		memcpy(*dataBegin, data, constantBufferSize);
+		resource->Unmap(0, nullptr);
+
+	}
+
 	std::shared_ptr<ID3D12Fence> CreateFence(ID3D12Device * device, D3D12_FENCE_FLAGS flag)
 	{
 		ID3D12Fence* fence;
@@ -331,10 +380,12 @@ namespace d3d
 	void PopulateCommandList(
 		ID3D12CommandAllocator* commandAllocator,
 		ID3D12GraphicsCommandList* commandList,
+		ID3D12GraphicsCommandList* bundleCommandList,
 		ID3D12PipelineState* pipeLineState,
 		ID3D12RootSignature* rootSignature,
 		ID3D12Resource** renderTarget,
-		ID3D12DescriptorHeap* descriptorHeap,
+		ID3D12DescriptorHeap* rtvDescriptorHeap,
+		ID3D12DescriptorHeap* cbvDescriptorHeap,
 		const UINT& descriptorSize,
 		const D3D12_VIEWPORT& viewport,
 		const D3D12_RECT& rect,
@@ -354,6 +405,9 @@ namespace d3d
 
 		// Set necessary state.
 		commandList->SetGraphicsRootSignature(rootSignature);
+
+		commandList->SetDescriptorHeaps(1, &cbvDescriptorHeap);
+
 		commandList->RSSetViewports(1, &viewport);
 		commandList->RSSetScissorRects(1, &rect);
 
@@ -369,15 +423,14 @@ namespace d3d
 		commandList->ResourceBarrier(1, &result);
 
 		D3D12_CPU_DESCRIPTOR_HANDLE handle;
-		handle.ptr = descriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + frameIndex * descriptorSize;
+		handle.ptr = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + frameIndex * descriptorSize;
 		commandList->OMSetRenderTargets(1, &handle, FALSE, nullptr);
 
 		// Record commands.
 		const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
 		commandList->ClearRenderTargetView(handle, clearColor, 0, nullptr);
-		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		commandList->IASetVertexBuffers(0, 1, vertexBuffer);
-		commandList->DrawInstanced(3, 1, 0, 0);
+
+		commandList->ExecuteBundle(bundleCommandList);
 
 		result.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		result.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
