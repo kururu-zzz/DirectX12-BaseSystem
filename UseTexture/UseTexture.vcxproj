@@ -19,8 +19,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{FC8DBB8E-E758-4EAE-8A11-02841FD32C76}</ProjectGuid>
-    <RootNamespace>DrawPolygon</RootNamespace>
+    <ProjectGuid>{FC37871F-7A64-4CBF-99ED-2B9E00623587}</ProjectGuid>
+    <RootNamespace>UseTexture</RootNamespace>
     <WindowsTargetPlatformVersion>10.0.10240.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -127,7 +127,6 @@
   <ItemGroup>
     <ClInclude Include="src\d3d.h" />
     <ClInclude Include="src\dxgi.h" />
-    <ClInclude Include="src\SafeEventHandle.h" />
     <ClInclude Include="src\Window.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

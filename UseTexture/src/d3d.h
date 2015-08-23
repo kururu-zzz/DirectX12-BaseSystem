@@ -59,13 +59,13 @@ namespace d3d
 	/**
 	*	@brief create D3D12_BLEND_DESC and return it;
 	*	@param blendMode : default,add;
-	*	@return D3D12_BLEND_DESC
+	*	@return value succeeded:return std::shared_ptr<D3D12_BLEND_DESC>,failed:throw std::exception
 	*/
 	D3D12_BLEND_DESC CreateBlendDesc(BlendMode mode = BlendMode::default);
 
 	/**
 	*	@brief create D3D12_RASTERIZER_DESC and return it;
-	*	@return D3D12_RASTERIZER_DESC
+	*	@return value succeeded:return std::shared_ptr<D3D12_RASTERIZER_DESC>,failed:throw std::exception
 	*/
 	D3D12_RASTERIZER_DESC CreateRasterizerDesc();
 
@@ -74,7 +74,7 @@ namespace d3d
 	*   @param semantics : unorderd_map whose key is std::string,value is DXGI_FORMAT of vertex element
 	*	@return D3D12_INPUT_LAYOUT_DESC
 	*/
-	D3D12_INPUT_LAYOUT_DESC CreateInputLayout(const std::unordered_map<std::string,DXGI_FORMAT>& semantics);
+	D3D12_INPUT_LAYOUT_DESC CreateInputLayout(const std::unordered_map<std::string, DXGI_FORMAT>& semantics);
 
 	/**
 	*	@brief create ID3D12PipelineState and return it;
@@ -119,18 +119,27 @@ namespace d3d
 	*/
 	std::shared_ptr<ID3D12Resource> CreateResoruce(ID3D12Device* device, size_t size);
 
+	
+	std::shared_ptr<ID3D12Resource> CreateResoruce(ID3D12Device* device, D3D12_RESOURCE_DESC* resourceDesc,D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE::D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATES resourceState = D3D12_RESOURCE_STATES::D3D12_RESOURCE_STATE_COMMON);
+
 	/**
 	*	@brief create D3D12_VERTEX_BUFFER_VIEW and return it;
 	*	@param resource : ID3D12Resource*
 	*	@param data : vertex data
 	*	@param vertexSize : size of vertex struct
 	*	@param vertexNum : num of vertex
-	*	@return D3D12_VERTEX_BUFFER_VIEW
+	*	@return value succeeded:return std::shared_ptr<D3D12_VERTEX_BUFFER_VIEW>,failed:throw std::exception
 	*/
 	D3D12_VERTEX_BUFFER_VIEW CreateVetexBufferView(ID3D12Resource* resource,void* data, size_t vertexSize,UINT vertexNum);
 
-
-	void CreateConstantBufferView(ID3D12Device* device, ID3D12Resource* resource, void* data, size_t constantBufferSize, UINT8** dataBegin,ID3D12DescriptorHeap* descriptorHeap);
+	UINT64 UpdateSubresources(
+		ID3D12GraphicsCommandList* commandList,
+		ID3D12Resource* pDestinationResource,
+		ID3D12Resource* pIntermediate,
+		UINT64 IntermediateOffset,
+		UINT FirstSubresource,
+		UINT NumSubresources,
+		D3D12_SUBRESOURCE_DATA* pSrcData);
 
 	/**
 	*	@brief create ID3D12Fence and return it;
@@ -145,12 +154,11 @@ namespace d3d
 	void PopulateCommandList(
 		ID3D12CommandAllocator* commandAllocator,
 		ID3D12GraphicsCommandList* commandList,
-		ID3D12GraphicsCommandList* bundleCommandList,
 		ID3D12PipelineState* pipeLineState,
 		ID3D12RootSignature* rootSignature,
 		ID3D12Resource** renderTarget,
+		ID3D12DescriptorHeap* srvDescriptorHeap,
 		ID3D12DescriptorHeap* rtvDescriptorHeap,
-		ID3D12DescriptorHeap* cbvDescriptorHeap,
 		const UINT& descriptorSize,
 		const D3D12_VIEWPORT& viewport,
 		const D3D12_RECT& rect,
