@@ -235,6 +235,8 @@ namespace d3d
 		ID3DBlob* vertexBlob,
 		ID3DBlob* geometryBlob,
 		ID3DBlob* pixelBlob,
+		ID3DBlob* hullBlob,
+		ID3DBlob* domainBlob,
 		const D3D12_RASTERIZER_DESC& rasterizeDesc,
 		const D3D12_BLEND_DESC& blend)
 	{
@@ -242,9 +244,16 @@ namespace d3d
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC gpsDesc = {};
 		gpsDesc.InputLayout = layout;
 		gpsDesc.pRootSignature = rootSignature;
-		gpsDesc.VS = { reinterpret_cast<UINT8*>(vertexBlob->GetBufferPointer()), vertexBlob->GetBufferSize() };
-		gpsDesc.GS = { reinterpret_cast<UINT8*>(geometryBlob->GetBufferPointer()), geometryBlob->GetBufferSize() };
-		gpsDesc.PS = { reinterpret_cast<UINT8*>(pixelBlob->GetBufferPointer()), pixelBlob->GetBufferSize() };
+		if (vertexBlob != nullptr)
+			gpsDesc.VS = { reinterpret_cast<UINT8*>(vertexBlob->GetBufferPointer()), vertexBlob->GetBufferSize() };
+		if (geometryBlob != nullptr)
+			gpsDesc.GS = { reinterpret_cast<UINT8*>(geometryBlob->GetBufferPointer()), geometryBlob->GetBufferSize() };
+		if (pixelBlob != nullptr)
+			gpsDesc.PS = { reinterpret_cast<UINT8*>(pixelBlob->GetBufferPointer()), pixelBlob->GetBufferSize() };
+		if (hullBlob != nullptr)
+			gpsDesc.HS = { reinterpret_cast<UINT8*>(hullBlob->GetBufferPointer()), hullBlob->GetBufferSize() };
+		if (domainBlob != nullptr)
+			gpsDesc.DS = { reinterpret_cast<UINT8*>(domainBlob->GetBufferPointer()), domainBlob->GetBufferSize() };
 		gpsDesc.RasterizerState = rasterizeDesc;
 		gpsDesc.BlendState = blend;
 		gpsDesc.DepthStencilState.DepthEnable = FALSE;
@@ -259,7 +268,7 @@ namespace d3d
 		return std::shared_ptr<ID3D12PipelineState>(pipelineState,ReleaseIUnknown);
 	}
 
-	std::shared_ptr<ID3D12DescriptorHeap> CreateDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc)
+	std::shared_ptr<ID3D12DescriptorHeap> CreateRTVDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc)
 	{
 		ID3D12DescriptorHeap* descriptorHeap;
 		D3D12_DESCRIPTOR_HEAP_DESC defaultDesc = {};
@@ -279,6 +288,26 @@ namespace d3d
 		return std::shared_ptr<ID3D12DescriptorHeap>(descriptorHeap, ReleaseIUnknown);
 	}
 
+	std::shared_ptr<ID3D12DescriptorHeap> CreateSRVDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc)
+	{
+		ID3D12DescriptorHeap* descriptorHeap;
+		D3D12_DESCRIPTOR_HEAP_DESC defaultDesc = {};
+		if (!descriptHeapDesc)
+		{
+			defaultDesc.NumDescriptors = 1;
+			defaultDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+			defaultDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+			descriptHeapDesc = &defaultDesc;
+		}
+		device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		DirectX::ThrowIfFailed(
+			device->CreateDescriptorHeap(
+				descriptHeapDesc,
+				IID_PPV_ARGS(&descriptorHeap)
+				));
+		return std::shared_ptr<ID3D12DescriptorHeap>(descriptorHeap, ReleaseIUnknown);
+	}
+
 	std::shared_ptr<ID3D12GraphicsCommandList> CreateCommandList(ID3D12Device* device, ID3D12CommandAllocator* commandAllocator,ID3D12PipelineState* pipeLineState, D3D12_COMMAND_LIST_TYPE listType)
 	{
 		ID3D12GraphicsCommandList* commandList;
@@ -293,13 +322,23 @@ namespace d3d
 		return std::shared_ptr<ID3D12GraphicsCommandList>(commandList, ReleaseIUnknown);
 	}
 
-	std::shared_ptr<ID3D12Resource> CreateRenderTarget(ID3D12Device * device,UINT bufferIndex ,IDXGISwapChain * swapChain, const D3D12_CPU_DESCRIPTOR_HANDLE& handle)
+	std::vector<std::shared_ptr<ID3D12Resource>> CreateRenderTargets(ID3D12Device * device, IDXGISwapChain * swapChain, ID3D12DescriptorHeap* rtvDescriptorHeap, UINT renderTargetNum)
 	{
-		ID3D12Resource* renderTarget;
-		DirectX::ThrowIfFailed(
-			swapChain->GetBuffer(bufferIndex, IID_PPV_ARGS(&renderTarget)));
-		device->CreateRenderTargetView(renderTarget, nullptr, handle);
-		return std::shared_ptr<ID3D12Resource>(renderTarget,ReleaseIUnknown);
+		std::vector<std::shared_ptr<ID3D12Resource>> renderTargets;
+		renderTargets.reserve(renderTargetNum);
+		D3D12_CPU_DESCRIPTOR_HANDLE handle;
+		handle.ptr = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr;
+		for (UINT i = 0; i < renderTargetNum; ++i)
+		{
+			ID3D12Resource* renderTarget;
+			DirectX::ThrowIfFailed(
+				swapChain->GetBuffer(i, IID_PPV_ARGS(&renderTarget)));
+			device->CreateRenderTargetView(renderTarget, nullptr, handle);
+
+			renderTargets.emplace_back(std::shared_ptr<ID3D12Resource>(renderTarget, ReleaseIUnknown));
+			handle.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		}
+		return renderTargets;
 	}
 
 	std::shared_ptr<ID3D12Resource> CreateResoruce(ID3D12Device* device, size_t size)
@@ -328,26 +367,48 @@ namespace d3d
 		return std::shared_ptr<ID3D12Resource>(resource, ReleaseIUnknown);
 	}
 
-	std::shared_ptr<ID3D12Resource> CreateResoruce(ID3D12Device* device, D3D12_RESOURCE_DESC* resourceDesc, D3D12_HEAP_TYPE heapType, D3D12_RESOURCE_STATES resourceState)
+
+	std::shared_ptr<ID3D12Resource> CreateTextureResoruce(ID3D12Device* device)
 	{
 		ID3D12Resource* resource;
 		D3D12_HEAP_PROPERTIES heapProperties = {};
-		heapProperties.Type = heapType;
+		heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
 		heapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
 		heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
 		heapProperties.CreationNodeMask = 1;
 		heapProperties.VisibleNodeMask = 1;
 
+		D3D12_RESOURCE_DESC textureDesc = {};
+		textureDesc.MipLevels = 1;
+		textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		textureDesc.Width = 256;
+		textureDesc.Height = 256;
+		textureDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		textureDesc.DepthOrArraySize = 1;
+		textureDesc.SampleDesc.Count = 1;
+		textureDesc.SampleDesc.Quality = 0;
+		textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+
 		DirectX::ThrowIfFailed(
 			device->CreateCommittedResource(
 				&heapProperties,
-				D3D12_HEAP_FLAGS::D3D12_HEAP_FLAG_NONE,
-				resourceDesc,
-				resourceState,
+				D3D12_HEAP_FLAG_NONE,
+				&textureDesc,
+				D3D12_RESOURCE_STATE_COPY_DEST,
 				nullptr,    // Clear value
 				IID_PPV_ARGS(&resource)
 				));
 		return std::shared_ptr<ID3D12Resource>(resource, ReleaseIUnknown);
+	}
+
+	void CreateShaderResourceView(ID3D12Device* device,ID3D12Resource* resource, ID3D12DescriptorHeap* srvDescriptorHeap)
+	{
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.Format = resource->GetDesc().Format;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MipLevels = 1;
+		device->CreateShaderResourceView(resource, &srvDesc, srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 	}
 
 	D3D12_VERTEX_BUFFER_VIEW CreateVetexBufferView(ID3D12Resource * resource,void* data, size_t vertexSize, UINT vertexNum)
@@ -457,39 +518,48 @@ namespace d3d
 	}
 
 	// Heap-allocating UpdateSubresources implementation
-	UINT64 UpdateSubresources(
+	void UpdateSubresources(
 		ID3D12GraphicsCommandList* commandList,
-		ID3D12Resource* pDestinationResource,
-		ID3D12Resource* pIntermediate,
-		UINT64 IntermediateOffset,
-		UINT FirstSubresource,
-		UINT NumSubresources,
-		D3D12_SUBRESOURCE_DATA* pSrcData)
+		ID3D12Resource* textureResource,
+		ID3D12Resource* textureHeapResource,
+		UINT64 offset,
+		UINT subResourceFirstIndex,
+		UINT subResourceNum,
+		D3D12_SUBRESOURCE_DATA* subResource)
 	{
 		UINT64 RequiredSize = 0;
-		UINT64 MemToAlloc = static_cast<UINT64>(sizeof(D3D12_PLACED_SUBRESOURCE_FOOTPRINT) + sizeof(UINT) + sizeof(UINT64)) * NumSubresources;
+		UINT64 MemToAlloc = static_cast<UINT64>(sizeof(D3D12_PLACED_SUBRESOURCE_FOOTPRINT) + sizeof(UINT) + sizeof(UINT64)) * subResourceNum;
 		if (MemToAlloc > SIZE_MAX)
 		{
-			return 0;
+			throw std::exception();
 		}
 		void* pMem = HeapAlloc(GetProcessHeap(), 0, static_cast<SIZE_T>(MemToAlloc));
 		if (pMem == NULL)
 		{
-			return 0;
+			throw std::exception();
 		}
 		D3D12_PLACED_SUBRESOURCE_FOOTPRINT* pLayouts = reinterpret_cast<D3D12_PLACED_SUBRESOURCE_FOOTPRINT*>(pMem);
-		UINT64* pRowSizesInBytes = reinterpret_cast<UINT64*>(pLayouts + NumSubresources);
-		UINT* pNumRows = reinterpret_cast<UINT*>(pRowSizesInBytes + NumSubresources);
+		UINT64* pRowSizesInBytes = reinterpret_cast<UINT64*>(pLayouts + subResourceNum);
+		UINT* pNumRows = reinterpret_cast<UINT*>(pRowSizesInBytes + subResourceNum);
 
-		D3D12_RESOURCE_DESC Desc = pDestinationResource->GetDesc();
-		ID3D12Device* pDevice;
-		pDestinationResource->GetDevice(__uuidof(*pDevice), reinterpret_cast<void**>(&pDevice));
-		pDevice->GetCopyableFootprints(&Desc, FirstSubresource, NumSubresources, IntermediateOffset, pLayouts, pNumRows, pRowSizesInBytes, &RequiredSize);
-		pDevice->Release();
+		D3D12_RESOURCE_DESC Desc = textureResource->GetDesc();
+		ID3D12Device* device;
+		textureResource->GetDevice(__uuidof(*device), reinterpret_cast<void**>(&device));
+		device->GetCopyableFootprints(&Desc, subResourceFirstIndex, subResourceNum, offset, pLayouts, pNumRows, pRowSizesInBytes, &RequiredSize);
+		device->Release();
 
-		UINT64 Result = UpdateSubresources(commandList, pDestinationResource, pIntermediate, FirstSubresource, NumSubresources, RequiredSize, pLayouts, pNumRows, pRowSizesInBytes, pSrcData);
+		UINT64 Result = UpdateSubresources(commandList, textureResource, textureHeapResource, subResourceFirstIndex, subResourceNum, RequiredSize, pLayouts, pNumRows, pRowSizesInBytes, subResource);
 		HeapFree(GetProcessHeap(), 0, pMem);
-		return Result;
+
+		D3D12_RESOURCE_BARRIER result;
+		result.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		result.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		result.Transition.pResource = textureResource;
+		result.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		result.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+		result.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		commandList->ResourceBarrier(1, &result);
+		commandList->Close();
 	}
 
 	std::shared_ptr<ID3D12Fence> CreateFence(ID3D12Device * device, D3D12_FENCE_FLAGS flag)
@@ -503,17 +573,38 @@ namespace d3d
 		return std::shared_ptr<ID3D12Fence>(fence,ReleaseIUnknown);
 	}
 
-	void WaitForPreviousFrame(IDXGISwapChain3* swapChain, UINT *frameIndex, ID3D12CommandQueue* commandQueue, ID3D12Fence* fence, UINT64* fenceValue, HANDLE* fenceEvent)
+	D3D12_VIEWPORT CreateViewport(float width, float height)
+	{
+		D3D12_VIEWPORT viewport;
+		viewport.TopLeftX = viewport.TopLeftY = 0.f;
+		viewport.Width = width;
+		viewport.Height = height;
+		viewport.MaxDepth = 1.0f;
+		viewport.MinDepth = 0.0f;
+		return viewport;
+	}
+
+	D3D12_RECT CreateRect(LONG width, LONG height)
+	{
+		D3D12_RECT rect;
+		rect.left = rect.top = 0;
+		rect.right = width;
+		rect.bottom = height;
+		return rect;
+	}
+
+	void WaitForPreviousFrame(IDXGISwapChain3* swapChain, UINT *frameIndex, ID3D12CommandQueue* commandQueue, ID3D12Fence* fence, HANDLE* fenceEvent)
 	{
 		// WAITING FOR THE FRAME TO COMPLETE BEFORE CONTINUING IS NOT BEST PRACTICE.
 		// This is code implemented as such for simplicity. More advanced samples 
 		// illustrate how to use fences for efficient resource usage.
 
+		static UINT64 fenceValue = 1;
 		// Signal and increment the fence value.
-		const UINT64 cfenceValue = *fenceValue;
+		const UINT64 cfenceValue = fenceValue;
 		DirectX::ThrowIfFailed(
 			commandQueue->Signal(fence, cfenceValue));
-		*fenceValue += 1;
+		fenceValue += 1;
 
 		// Wait until the previous frame is finished.
 		if (fence->GetCompletedValue() < cfenceValue)
@@ -526,7 +617,7 @@ namespace d3d
 		*frameIndex = swapChain->GetCurrentBackBufferIndex();
 	}
 
-	void PopulateCommandList(
+	void PrepareCommandList(
 		ID3D12CommandAllocator* commandAllocator,
 		ID3D12GraphicsCommandList* commandList,
 		ID3D12PipelineState* pipeLineState,

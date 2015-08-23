@@ -44,7 +44,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	const float wndWidth = 1200.f;
 	const float wndHeight = 900.f;
 
-	auto hWnd = InitWindow(AppName, hInstance, WndProc, wndWidth, wndHeight);
+	auto hWnd = InitWindow(AppName, hInstance, WndProc, static_cast<int>(wndWidth), static_cast<int>(wndHeight));
 
 	auto device = d3d::CreateDevice();
 	auto commandQueue = d3d::CreateCommandQueue(device.get());

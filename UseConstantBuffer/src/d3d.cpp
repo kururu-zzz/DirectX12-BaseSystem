@@ -16,6 +16,7 @@ namespace d3d
 	{
 #ifdef _DEBUG
 		// Enable the D3D12 debug layer.
+		// cf.MicroSoft Sample Source
 		ID3D12Debug* debugController;
 		if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
 		{
@@ -78,11 +79,11 @@ namespace d3d
 	{
 		ID3DBlob* blob;
 		WCHAR	path[100];
-		//文字コード変換
 		MultiByteToWideChar(CP_ACP, 0, fileName.c_str(), -1, path, MAX_PATH);
 
 #ifdef _DEBUG
 		// Enable better shader debugging with the graphics debugging tools.
+		// cf.MicroSoft Sample Source
 		UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
 #else
 		UINT compileFlags = 0;
@@ -180,8 +181,7 @@ namespace d3d
 		}
 		::ZeroMemory(&blendDesc, sizeof(blendDesc));
 		blendDesc.AlphaToCoverageEnable = FALSE;
-		// TRUEの場合、マルチレンダーターゲットで各レンダーターゲットのブレンドステートの設定を個別に設定できる
-		// FALSEの場合、0番目のみが使用される
+
 		blendDesc.IndependentBlendEnable = FALSE;
 
 		for (UINT i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
@@ -220,6 +220,8 @@ namespace d3d
 		ID3DBlob* vertexBlob,
 		ID3DBlob* geometryBlob,
 		ID3DBlob* pixelBlob,
+		ID3DBlob* hullBlob,
+		ID3DBlob* domainBlob,
 		const D3D12_RASTERIZER_DESC& rasterizeDesc,
 		const D3D12_BLEND_DESC& blend)
 	{
@@ -227,9 +229,16 @@ namespace d3d
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC gpsDesc = {};
 		gpsDesc.InputLayout = layout;
 		gpsDesc.pRootSignature = rootSignature;
-		gpsDesc.VS = { reinterpret_cast<UINT8*>(vertexBlob->GetBufferPointer()), vertexBlob->GetBufferSize() };
-		gpsDesc.GS = { reinterpret_cast<UINT8*>(geometryBlob->GetBufferPointer()), geometryBlob->GetBufferSize() };
-		gpsDesc.PS = { reinterpret_cast<UINT8*>(pixelBlob->GetBufferPointer()), pixelBlob->GetBufferSize() };
+		if (vertexBlob != nullptr)
+			gpsDesc.VS = { reinterpret_cast<UINT8*>(vertexBlob->GetBufferPointer()), vertexBlob->GetBufferSize() };
+		if (geometryBlob != nullptr)
+			gpsDesc.GS = { reinterpret_cast<UINT8*>(geometryBlob->GetBufferPointer()), geometryBlob->GetBufferSize() };
+		if (pixelBlob != nullptr)
+			gpsDesc.PS = { reinterpret_cast<UINT8*>(pixelBlob->GetBufferPointer()), pixelBlob->GetBufferSize() };
+		if (hullBlob != nullptr)
+			gpsDesc.HS = { reinterpret_cast<UINT8*>(hullBlob->GetBufferPointer()), hullBlob->GetBufferSize() };
+		if (domainBlob != nullptr)
+			gpsDesc.DS = { reinterpret_cast<UINT8*>(domainBlob->GetBufferPointer()), domainBlob->GetBufferSize() };
 		gpsDesc.RasterizerState = rasterizeDesc;
 		gpsDesc.BlendState = blend;
 		gpsDesc.DepthStencilState.DepthEnable = FALSE;
@@ -244,7 +253,7 @@ namespace d3d
 		return std::shared_ptr<ID3D12PipelineState>(pipelineState,ReleaseIUnknown);
 	}
 
-	std::shared_ptr<ID3D12DescriptorHeap> CreateDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc)
+	std::shared_ptr<ID3D12DescriptorHeap> CreateRTVDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc)
 	{
 		ID3D12DescriptorHeap* descriptorHeap;
 		D3D12_DESCRIPTOR_HEAP_DESC defaultDesc = {};
@@ -263,6 +272,25 @@ namespace d3d
 		return std::shared_ptr<ID3D12DescriptorHeap>(descriptorHeap, ReleaseIUnknown);
 	}
 
+	std::shared_ptr<ID3D12DescriptorHeap> CreateCBVDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc)
+	{
+		ID3D12DescriptorHeap* descriptorHeap;
+		D3D12_DESCRIPTOR_HEAP_DESC defaultDesc = {};
+		if (!descriptHeapDesc)
+		{
+			defaultDesc.NumDescriptors = 1;
+			defaultDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+			defaultDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+			descriptHeapDesc = &defaultDesc;
+		}
+		DirectX::ThrowIfFailed(
+			device->CreateDescriptorHeap(
+				descriptHeapDesc,
+				IID_PPV_ARGS(&descriptorHeap)
+				));
+		return std::shared_ptr<ID3D12DescriptorHeap>(descriptorHeap, ReleaseIUnknown);
+	}
+
 	std::shared_ptr<ID3D12GraphicsCommandList> CreateCommandList(ID3D12Device* device, ID3D12CommandAllocator* commandAllocator,ID3D12PipelineState* pipeLineState, D3D12_COMMAND_LIST_TYPE listType)
 	{
 		ID3D12GraphicsCommandList* commandList;
@@ -274,16 +302,27 @@ namespace d3d
 				pipeLineState,
 				IID_PPV_ARGS(&commandList)
 				));
+		commandList->Close();
 		return std::shared_ptr<ID3D12GraphicsCommandList>(commandList, ReleaseIUnknown);
 	}
 
-	std::shared_ptr<ID3D12Resource> CreateRenderTarget(ID3D12Device * device,UINT bufferIndex ,IDXGISwapChain * swapChain, const D3D12_CPU_DESCRIPTOR_HANDLE& handle)
+	std::vector<std::shared_ptr<ID3D12Resource>> CreateRenderTargets(ID3D12Device * device,IDXGISwapChain * swapChain, ID3D12DescriptorHeap* rtvDescriptorHeap, UINT renderTargetNum)
 	{
-		ID3D12Resource* renderTarget;
-		DirectX::ThrowIfFailed(
-			swapChain->GetBuffer(bufferIndex, IID_PPV_ARGS(&renderTarget)));
-		device->CreateRenderTargetView(renderTarget, nullptr, handle);
-		return std::shared_ptr<ID3D12Resource>(renderTarget,ReleaseIUnknown);
+		std::vector<std::shared_ptr<ID3D12Resource>> renderTargets;
+		renderTargets.reserve(renderTargetNum);
+		D3D12_CPU_DESCRIPTOR_HANDLE handle;
+		handle.ptr = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr;
+		for (UINT i = 0; i < renderTargetNum; ++i)
+		{
+			ID3D12Resource* renderTarget;
+			DirectX::ThrowIfFailed(
+				swapChain->GetBuffer(i, IID_PPV_ARGS(&renderTarget)));
+			device->CreateRenderTargetView(renderTarget, nullptr, handle);
+
+			renderTargets.emplace_back(std::shared_ptr<ID3D12Resource>(renderTarget, ReleaseIUnknown));
+			handle.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		}
+		return renderTargets;
 	}
 
 	std::shared_ptr<ID3D12Resource> CreateResoruce(ID3D12Device* device, size_t size)
@@ -327,13 +366,17 @@ namespace d3d
 		return vertexBufferView;
 	}
 
-	void CreateConstantBufferView(ID3D12Device* device, ID3D12Resource * resource, void * data,size_t constantBufferSize, UINT8** dataBegin, ID3D12DescriptorHeap* descriptorHeap)
+	void CreateConstantBufferView(ID3D12Device* device, ID3D12Resource * resource, void * data,size_t constantBufferSize, UINT8** dataBegin, ID3D12DescriptorHeap* cbvDescriptorHeap)
 	{
 		// Describe and create a constant buffer view.
+		// cf.MicroSoft Sample Source
+
 		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
 		cbvDesc.BufferLocation = resource->GetGPUVirtualAddress();
-		cbvDesc.SizeInBytes = (constantBufferSize + 255) & ~255;	// CB size is required to be 256-byte aligned.
-		device->CreateConstantBufferView(&cbvDesc, descriptorHeap->GetCPUDescriptorHandleForHeapStart());
+		// CB size is required to be 256-byte aligned.
+		// cf.MicroSoft Sample Source
+		cbvDesc.SizeInBytes = (constantBufferSize + 255) & ~255;
+		device->CreateConstantBufferView(&cbvDesc, cbvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
 		ZeroMemory(data, constantBufferSize);
 		DirectX::ThrowIfFailed(
@@ -354,19 +397,44 @@ namespace d3d
 		return std::shared_ptr<ID3D12Fence>(fence,ReleaseIUnknown);
 	}
 
-	void WaitForPreviousFrame(IDXGISwapChain3* swapChain, UINT *frameIndex, ID3D12CommandQueue* commandQueue, ID3D12Fence* fence, UINT64* fenceValue, HANDLE* fenceEvent)
+	D3D12_VIEWPORT CreateViewport(float width, float height)
+	{
+		D3D12_VIEWPORT viewport;
+		viewport.TopLeftX = viewport.TopLeftY = 0.f;
+		viewport.Width = width;
+		viewport.Height = height;
+		viewport.MaxDepth = 1.0f;
+		viewport.MinDepth = 0.0f;
+		return viewport;
+	}
+
+	D3D12_RECT CreateRect(LONG width, LONG height)
+	{
+		D3D12_RECT rect;
+		rect.left = rect.top = 0;
+		rect.right = width;
+		rect.bottom = height;
+		return rect;
+	}
+
+	void WaitForPreviousFrame(IDXGISwapChain3* swapChain, UINT *frameIndex, ID3D12CommandQueue* commandQueue, ID3D12Fence* fence, HANDLE* fenceEvent)
 	{
 		// WAITING FOR THE FRAME TO COMPLETE BEFORE CONTINUING IS NOT BEST PRACTICE.
 		// This is code implemented as such for simplicity. More advanced samples 
 		// illustrate how to use fences for efficient resource usage.
+		// cf.MicroSoft Sample Source
 
 		// Signal and increment the fence value.
-		const UINT64 cfenceValue = *fenceValue;
+		// cf.MicroSoft Sample Source
+		static UINT fenceValue = 1;
+		const UINT64 cfenceValue = fenceValue;
 		DirectX::ThrowIfFailed(
 			commandQueue->Signal(fence, cfenceValue));
-		*fenceValue += 1;
+		fenceValue += 1;
 
 		// Wait until the previous frame is finished.
+		// cf.MicroSoft Sample Source
+
 		if (fence->GetCompletedValue() < cfenceValue)
 		{
 			DirectX::ThrowIfFailed(
@@ -377,7 +445,7 @@ namespace d3d
 		*frameIndex = swapChain->GetCurrentBackBufferIndex();
 	}
 
-	void PopulateCommandList(
+	void PrepareCommandList(
 		ID3D12CommandAllocator* commandAllocator,
 		ID3D12GraphicsCommandList* commandList,
 		ID3D12GraphicsCommandList* bundleCommandList,
@@ -386,24 +454,29 @@ namespace d3d
 		ID3D12Resource** renderTarget,
 		ID3D12DescriptorHeap* rtvDescriptorHeap,
 		ID3D12DescriptorHeap* cbvDescriptorHeap,
-		const UINT& descriptorSize,
+		const UINT& rtvDescriptorSize,
 		const D3D12_VIEWPORT& viewport,
 		const D3D12_RECT& rect,
-		const D3D12_VERTEX_BUFFER_VIEW* vertexBuffer,
 		const int frameIndex
 		)
 	{
 		// Command list allocators can only be reset when the associated 
 		// command lists have finished execution on the GPU; apps should use 
 		// fences to determine GPU execution progress.
+		// cf.MicroSoft Sample Source
+
 		DirectX::ThrowIfFailed(commandAllocator->Reset());
 
 		// However, when ExecuteCommandList() is called on a particular command 
 		// list, that command list can then be reset at any time and must be before 
 		// re-recording.
+		// cf.MicroSoft Sample Source
+
 		DirectX::ThrowIfFailed(commandList->Reset(commandAllocator, pipeLineState));
 
 		// Set necessary state.
+		// cf.MicroSoft Sample Source
+
 		commandList->SetGraphicsRootSignature(rootSignature);
 
 		commandList->SetDescriptorHeaps(1, &cbvDescriptorHeap);
@@ -420,13 +493,17 @@ namespace d3d
 		result.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 		
 		// Indicate that the back buffer will be used as a render target.
+		// cf.MicroSoft Sample Source
+
 		commandList->ResourceBarrier(1, &result);
 
 		D3D12_CPU_DESCRIPTOR_HANDLE handle;
-		handle.ptr = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + frameIndex * descriptorSize;
+		handle.ptr = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + frameIndex * rtvDescriptorSize;
 		commandList->OMSetRenderTargets(1, &handle, FALSE, nullptr);
 
 		// Record commands.
+		// cf.MicroSoft Sample Source
+
 		const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
 		commandList->ClearRenderTargetView(handle, clearColor, 0, nullptr);
 
@@ -440,8 +517,31 @@ namespace d3d
 		result.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
 		// Indicate that the back buffer will now be used to present.
+		// cf.MicroSoft Sample Source
+
 		commandList->ResourceBarrier(1, &result);
 
 		DirectX::ThrowIfFailed(commandList->Close());
+	}
+
+	void PrepareBundle(
+		ID3D12CommandAllocator* bundleAllocator,
+		ID3D12GraphicsCommandList* bundleCommandList,
+		ID3D12PipelineState* pipeLineState,
+		ID3D12RootSignature* rootSignature,
+		ID3D12DescriptorHeap* cbvDescriptorHeap,
+		const D3D12_VERTEX_BUFFER_VIEW* vertexBuffer
+		)
+	{
+		DirectX::ThrowIfFailed(bundleAllocator->Reset());
+		DirectX::ThrowIfFailed(bundleCommandList->Reset(bundleAllocator, pipeLineState));
+
+		bundleCommandList->SetDescriptorHeaps(1, &cbvDescriptorHeap);
+		bundleCommandList->SetGraphicsRootSignature(rootSignature);
+		bundleCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		bundleCommandList->IASetVertexBuffers(0, 1, vertexBuffer);
+		bundleCommandList->SetGraphicsRootDescriptorTable(0, cbvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+		bundleCommandList->DrawInstanced(3, 1, 0, 0);
+		bundleCommandList->Close();
 	}
 }

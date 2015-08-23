@@ -127,6 +127,7 @@
   <ItemGroup>
     <ClInclude Include="src\d3d.h" />
     <ClInclude Include="src\dxgi.h" />
+    <ClInclude Include="src\SafeEventHandle.h" />
     <ClInclude Include="src\Window.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
