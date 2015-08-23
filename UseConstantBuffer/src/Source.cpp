@@ -1,6 +1,7 @@
 #include "Window.h"
 #include "d3d.h"
 #include "dxgi.h"
+#include "SafeEventHandle.h"
 #include <ComUtil.h>
 #include <crtdbg.h>
 #include <vector>
@@ -42,20 +43,20 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	LPTSTR,
 	INT
 	) {
-	// アプリケーションの初期化
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-	// アプリケーション名 
+
 	TCHAR* AppName = _T("UseConstantBuffer");
 	auto com = ComApartment();
 
-	// ウィンドウの作成
-	auto hWnd = InitWindow(AppName, hInstance, WndProc, 1200, 900);
+	float wndWidth = 1200.f;
+	float wndHeight = 900.f;
+
+	auto hWnd = InitWindow(AppName, hInstance, WndProc, static_cast<int>(wndWidth), static_cast<int>(wndHeight));
 
 	auto device = d3d::CreateDevice();
 	auto commandQueue = d3d::CreateCommandQueue(device.get());
 	auto swapChain = dxgi::CreateSwapChain(device.get(), commandQueue.get(), &hWnd);
 
-	const UINT frameNum = 2;
 	UINT frameIndex = swapChain->GetCurrentBackBufferIndex();
 
 	auto commandAllocator = d3d::CreateCommandAllocator(device.get());
@@ -77,40 +78,27 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	auto layout = d3d::CreateInputLayout(semantics);
 
-	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
-	rtvHeapDesc.NumDescriptors = frameNum;
-	rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-	rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	auto rtvDescriptorHeap = d3d::CreateRTVDescriptorHeap(device.get());
 
-	auto rtvDescriptorHeap = d3d::CreateDescriptorHeap(device.get(), &rtvHeapDesc);
-	UINT descriptorSize;
+	UINT rtvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
-	descriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	auto cbvDescriptorHeap = d3d::CreateCBVDescriptorHeap(device.get());
 
-	D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc = {};
-	cbvHeapDesc.NumDescriptors = 1;
-	cbvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-	cbvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	auto renderTargets = d3d::CreateRenderTargets(device.get(), swapChain.get(), rtvDescriptorHeap.get());
 
-	auto cbvDescriptorHeap = d3d::CreateDescriptorHeap(device.get(), &cbvHeapDesc);
-
-	const int renderTargetNum = 2;
-	std::vector<std::shared_ptr<ID3D12Resource>> renderTargets;
-	renderTargets.reserve(renderTargetNum);
-	D3D12_CPU_DESCRIPTOR_HANDLE handle;
-	handle.ptr = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr;
-	for (UINT i = 0; i < renderTargetNum; ++i)
-	{
-		auto renderTarget = d3d::CreateRenderTarget(device.get(), i, swapChain.get(), handle);
-		renderTargets.emplace_back(renderTarget);
-		handle.ptr += descriptorSize;
-	}
-
-	auto pipeLine = d3d::CreatePipeLineState(device.get(), layout,rootSignature.get(), vertexBlob.get(), geometryBlob.get(), pixelBlob.get(), d3d::CreateRasterizerDesc(), d3d::CreateBlendDesc(d3d::BlendMode::default));
+	auto pipeLine = d3d::CreatePipeLineState(
+		device.get(), 
+		layout,
+		rootSignature.get(), 
+		vertexBlob.get(), 
+		geometryBlob.get(), 
+		pixelBlob.get(),
+		nullptr,
+		nullptr,
+		d3d::CreateRasterizerDesc(), 
+		d3d::CreateBlendDesc(d3d::BlendMode::default));
 	auto commandList = d3d::CreateCommandList(device.get(), commandAllocator.get(), pipeLine.get());
 	auto bundleCommandList = d3d::CreateCommandList(device.get(), bundleAllocator.get(), pipeLine.get(), D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_BUNDLE);
-
-	commandList->Close();
 
 	auto vertexResource = d3d::CreateResoruce(device.get(), sizeof(triangleVerts)*sizeof(Vertex));
 	auto vertexBufferView = d3d::CreateVetexBufferView(vertexResource.get(), triangleVerts, sizeof(Vertex), _countof(triangleVerts));
@@ -120,44 +108,17 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	auto constantBufferResource = d3d::CreateResoruce(device.get(), 1024 * 64);
 	d3d::CreateConstantBufferView(device.get(),constantBufferResource.get(),&cBuffer,sizeof(ConstantBuffer),&dataBegin,cbvDescriptorHeap.get());
 
-	{
-		auto tmpHeap = cbvDescriptorHeap.get();
-		bundleCommandList->SetDescriptorHeaps(1, &tmpHeap);
-		bundleCommandList->SetGraphicsRootSignature(rootSignature.get());
-		bundleCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		bundleCommandList->IASetVertexBuffers(0, 1, &vertexBufferView);
-		bundleCommandList->SetGraphicsRootDescriptorTable(0, cbvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-		bundleCommandList->DrawInstanced(3, 1, 0, 0);
-		bundleCommandList->Close();
-	}
+	d3d::PrepareBundle(bundleAllocator.get(),bundleCommandList.get(),pipeLine.get(), rootSignature.get(), cbvDescriptorHeap.get(), &vertexBufferView);
 
 	auto fence = d3d::CreateFence(device.get());
 
-	UINT64 fenceValue = 1;
+	auto fenceEvent = SafeEventHandle();
 
-	// Create an event handle to use for frame synchronization.
-	auto fenceEvent = CreateEventEx(nullptr, FALSE, FALSE, EVENT_ALL_ACCESS);
-	if (fenceEvent == nullptr)
-	{
-		if (FAILED(HRESULT_FROM_WIN32(GetLastError())))
-		{
-			std::exception;
-		};
-	}
+	d3d::WaitForPreviousFrame(swapChain.get(), &frameIndex, commandQueue.get(), fence.get(), fenceEvent.get());
 
-	d3d::WaitForPreviousFrame(swapChain.get(), &frameIndex, commandQueue.get(), fence.get(), &fenceValue, &fenceEvent);
+	auto viewport = d3d::CreateViewport(wndWidth, wndHeight);
 
-	D3D12_VIEWPORT viewport;
-	viewport.TopLeftX = viewport.TopLeftY = 0.f;
-	viewport.Width = static_cast<float>(1200.f);
-	viewport.Height = static_cast<float>(900.f);
-	viewport.MaxDepth = 1.0f;
-	viewport.MinDepth = 0.0f;
-
-	D3D12_RECT rect;
-	rect.left = rect.top = 0.f;
-	rect.right = static_cast<LONG>(1200.f);
-	rect.bottom = static_cast<LONG>(900.f);
+	auto rect = d3d::CreateRect(static_cast<LONG>(wndWidth), static_cast<LONG>(wndHeight));
 
 	::ShowWindow(hWnd, SW_SHOW);
 	::UpdateWindow(hWnd);
@@ -189,7 +150,19 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 				transRenderTarget.emplace_back(renderTarget.get());
 			}
 
-			d3d::PopulateCommandList(commandAllocator.get(), commandList.get(),bundleCommandList.get(), pipeLine.get(), rootSignature.get(), transRenderTarget.data(), rtvDescriptorHeap.get(),cbvDescriptorHeap.get(), descriptorSize, viewport, rect, &vertexBufferView, frameIndex);
+			d3d::PrepareCommandList(
+				commandAllocator.get(), 
+				commandList.get(),
+				bundleCommandList.get(), 
+				pipeLine.get(), 
+				rootSignature.get(), 
+				transRenderTarget.data(), 
+				rtvDescriptorHeap.get(),
+				cbvDescriptorHeap.get(), 
+				rtvDescriptorSize, 
+				viewport, 
+				rect,
+				frameIndex);
 
 			// Execute the command list.
 			ID3D12CommandList* ppCommandLists[] = { commandList.get() };
@@ -198,13 +171,16 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 			// Present the frame.
 			swapChain->Present(1, 0);
 
-			d3d::WaitForPreviousFrame(swapChain.get(),&frameIndex,commandQueue.get(),fence.get(),&fenceValue,&fenceEvent);
+			d3d::WaitForPreviousFrame(
+				swapChain.get(),
+				&frameIndex,
+				commandQueue.get(),
+				fence.get(),
+				fenceEvent.get());
 		}
 	} while (msg.message != WM_QUIT);
 
-	d3d::WaitForPreviousFrame(swapChain.get(), &frameIndex, commandQueue.get(), fence.get(), &fenceValue, &fenceEvent);
-
-	CloseHandle(fenceEvent);
+	d3d::WaitForPreviousFrame(swapChain.get(), &frameIndex, commandQueue.get(), fence.get(), fenceEvent.get());
 
 	DestroyWindow(hWnd);
 

@@ -40,7 +40,7 @@ namespace d3d
 	std::shared_ptr<ID3D12CommandAllocator> CreateCommandAllocator(ID3D12Device* device,D3D12_COMMAND_LIST_TYPE listType = D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT);
 
 	/**
-	*	@brief create ID3D12CommandQueue and return it;
+	*	@brief create ID3DBlob and return it;
 	*	@param fileName : hlsl fileName;
 	*	@param shaderName : shader function name;
 	*	@param shaderType : shader type(e.g.vs_5_0);
