@@ -1,6 +1,7 @@
 #include "Window.h"
 #include "d3d.h"
 #include "dxgi.h"
+#include "SafeEventHandle.h"
 #include <ComUtil.h>
 #include <crtdbg.h>
 #include <vector>
@@ -83,8 +84,11 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	TCHAR* AppName = _T("UseTexture");
 	auto com = ComApartment();
 
+	const float wndWidth = 1200.f;
+	const float wndHeight = 900.f;
+
 	// ウィンドウの作成
-	auto hWnd = InitWindow(AppName, hInstance, WndProc, 1200, 900);
+	auto hWnd = InitWindow(AppName, hInstance, WndProc, static_cast<int>(wndWidth), static_cast<int>(wndHeight));
 
 	auto device = d3d::CreateDevice();
 	auto commandQueue = d3d::CreateCommandQueue(device.get());
@@ -112,21 +116,10 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	auto layout = d3d::CreateInputLayout(semantics);
 
-	D3D12_RESOURCE_DESC textureDesc = {};
-	textureDesc.MipLevels = 1;
-	textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	textureDesc.Width = 256;
-	textureDesc.Height = 256;
-	textureDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-	textureDesc.DepthOrArraySize = 1;
-	textureDesc.SampleDesc.Count = 1;
-	textureDesc.SampleDesc.Quality = 0;
-	textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-
-	auto textureResource = d3d::CreateResoruce(device.get(), &textureDesc, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_COPY_DEST);
+	auto textureResource = d3d::CreateTextureResoruce(device.get());
 
 	UINT64 bufSize;
-	device->GetCopyableFootprints(&textureDesc, 0, 1, 0, nullptr, nullptr, nullptr, &bufSize);
+	device->GetCopyableFootprints(&textureResource->GetDesc(), 0, 1, 0, nullptr, nullptr, nullptr, &bufSize);
 
 	auto textureData = GenerateTextureData();
 	auto textureHeapResource = d3d::CreateResoruce(device.get(), bufSize);
@@ -135,56 +128,31 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	textureResourceData.pData = &textureData[0];
 	textureResourceData.RowPitch = 256 * 4;
 	textureResourceData.SlicePitch = textureResourceData.RowPitch * 256;
-
-	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-	srvHeapDesc.NumDescriptors = 1;
-	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	
-	auto srvDescriptor = d3d::CreateDescriptorHeap(device.get(), &srvHeapDesc);
+	auto srvDescriptorHeap = d3d::CreateSRVDescriptorHeap(device.get());
 
-	// Describe and create a SRV for the texture.
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.Format = textureDesc.Format;
-	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc.Texture2D.MipLevels = 1;
-	device->CreateShaderResourceView(textureResource.get(), &srvDesc, srvDescriptor->GetCPUDescriptorHandleForHeapStart());
+	d3d::CreateShaderResourceView(device.get(), textureResource.get(), srvDescriptorHeap.get());
 
+	auto rtvDescriptorHeap = d3d::CreateRTVDescriptorHeap(device.get());
 
-	/*Create RenderTargetView*/
-	UINT rtvDescriptorSize;
-	auto rtvDescriptorHeap = d3d::CreateDescriptorHeap(device.get());
+	UINT rtvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
-	rtvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	auto renderTargets = d3d::CreateRenderTargets(device.get(),swapChain.get(),rtvDescriptorHeap.get());
 
-	const int renderTargetNum = 2;
-	std::vector<std::shared_ptr<ID3D12Resource>> renderTargets;
-	renderTargets.reserve(renderTargetNum);
-	D3D12_CPU_DESCRIPTOR_HANDLE handle;
-	handle.ptr = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr;
-	for (UINT i = 0; i < renderTargetNum; ++i)
-	{
-		auto renderTarget = d3d::CreateRenderTarget(device.get(), i, swapChain.get(), handle);
-		renderTargets.emplace_back(renderTarget);
-		handle.ptr += rtvDescriptorSize;
-	}
-
-	auto pipeLine = d3d::CreatePipeLineState(device.get(), layout,rootSignature.get(), vertexBlob.get(), geometryBlob.get(), pixelBlob.get(), d3d::CreateRasterizerDesc(), d3d::CreateBlendDesc(d3d::BlendMode::default));
+	auto pipeLine = d3d::CreatePipeLineState(
+		device.get(), 
+		layout,
+		rootSignature.get(), 
+		vertexBlob.get(), 
+		geometryBlob.get(), 
+		pixelBlob.get(), 
+		nullptr,
+		nullptr,
+		d3d::CreateRasterizerDesc(), 
+		d3d::CreateBlendDesc(d3d::BlendMode::default));
 	auto commandList = d3d::CreateCommandList(device.get(), commandAllocator.get(), pipeLine.get());
 
-	{
-		d3d::UpdateSubresources(commandList.get(), textureResource.get(), textureHeapResource.get(), 0, 0, 1, &textureResourceData);
-		D3D12_RESOURCE_BARRIER result;
-		result.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		result.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		result.Transition.pResource = textureResource.get();
-		result.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-		result.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-		result.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		commandList->ResourceBarrier(1, &result);
-		commandList->Close();
-	}
+	d3d::UpdateSubresources(commandList.get(), textureResource.get(), textureHeapResource.get(), 0, 0, 1, &textureResourceData);
 
 	auto vertexResource = d3d::CreateResoruce(device.get(), sizeof(triangleVerts)*sizeof(Vertex));
 	auto vertexBufferView = d3d::CreateVetexBufferView(vertexResource.get(), triangleVerts, sizeof(Vertex), _countof(triangleVerts));
@@ -194,28 +162,13 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	auto fence = d3d::CreateFence(device.get());
 
-	UINT64 fenceValue = 1;
+	auto fenceEvent = SafeEventHandle();
 
-	// Create an event handle to use for frame synchronization.
-	auto fenceEvent = CreateEventEx(nullptr, FALSE, FALSE, EVENT_ALL_ACCESS);
-	if (fenceEvent == nullptr)
-	{
-		HRESULT_FROM_WIN32(GetLastError());
-	}
+	d3d::WaitForPreviousFrame(swapChain.get(), &frameIndex, commandQueue.get(), fence.get(), fenceEvent.get());
 
-	d3d::WaitForPreviousFrame(swapChain.get(), &frameIndex, commandQueue.get(), fence.get(), &fenceValue, &fenceEvent);
+	auto viewport = d3d::CreateViewport(wndWidth, wndHeight);
 
-	D3D12_VIEWPORT viewport;
-	viewport.TopLeftX = viewport.TopLeftY = 0.f;
-	viewport.Width = static_cast<float>(1200.f);
-	viewport.Height = static_cast<float>(900.f);
-	viewport.MaxDepth = 1.0f;
-	viewport.MinDepth = 0.0f;
-
-	D3D12_RECT rect;
-	rect.left = rect.top = 0.f;
-	rect.right = static_cast<LONG>(1200.f);
-	rect.bottom = static_cast<LONG>(900.f);
+	auto rect = d3d::CreateRect(static_cast<LONG>(wndWidth), static_cast<LONG>(wndHeight));
 
 	::ShowWindow(hWnd, SW_SHOW);
 	::UpdateWindow(hWnd);
@@ -234,7 +187,19 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 				transRenderTarget.emplace_back(renderTarget.get());
 			}
 
-			d3d::PopulateCommandList(commandAllocator.get(), commandList.get(), pipeLine.get(), rootSignature.get(), transRenderTarget.data(),srvDescriptor.get(), rtvDescriptorHeap.get(), rtvDescriptorSize, viewport, rect, &vertexBufferView, frameIndex);
+			d3d::PrepareCommandList(
+				commandAllocator.get(), 
+				commandList.get(), 
+				pipeLine.get(), 
+				rootSignature.get(), 
+				transRenderTarget.data(),
+				srvDescriptorHeap.get(), 
+				rtvDescriptorHeap.get(), 
+				rtvDescriptorSize, 
+				viewport, 
+				rect, 
+				&vertexBufferView, 
+				frameIndex);
 
 			// Execute the command list.
 			ID3D12CommandList* ppCommandLists[] = { commandList.get() };
@@ -243,9 +208,16 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 			// Present the frame.
 			swapChain->Present(1, 0);
 
-			d3d::WaitForPreviousFrame(swapChain.get(),&frameIndex,commandQueue.get(),fence.get(),&fenceValue,&fenceEvent);
+			d3d::WaitForPreviousFrame(
+				swapChain.get(),
+				&frameIndex,
+				commandQueue.get(),
+				fence.get(),
+				fenceEvent.get());
 		}
 	} while (msg.message != WM_QUIT);
+
+	d3d::WaitForPreviousFrame(swapChain.get(), &frameIndex, commandQueue.get(), fence.get(), fenceEvent.get());
 
 	DestroyWindow(hWnd);
 
