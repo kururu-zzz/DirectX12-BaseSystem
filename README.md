@@ -1,5 +1,8 @@
 # DirectX12-BaseSystem
 
+8/24:Textureを使用した描画に成功  
+ソースを全てリファクタリング
+
 8/18:ConstantBufferを使用した描画に成功  
 BaseSystemの方で行列使用に挑戦の予定  
   
