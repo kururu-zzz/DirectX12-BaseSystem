@@ -4,10 +4,11 @@
 #include <d3d12.h>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 namespace d3d
 {
-	enum class BlendMode 
+	enum class BlendMode
 	{
 		default,
 		add,
@@ -18,7 +19,7 @@ namespace d3d
 {
 	/**
 	*	@brief create ID3D12Device and return it;
-	*	@return value succeeded:return std::shared_ptr<ID3D12Device>,failed:throw std::exception
+	*	@return succeeded:return std::shared_ptr<ID3D12Device>,failed:throw std::exception
 	*/
 	std::shared_ptr<ID3D12Device> CreateDevice();
 
@@ -26,7 +27,7 @@ namespace d3d
 	*	@brief create ID3D12CommandQueue and return it;
 	*	@param device : ID3D12Device*
 	*	@param queueDesc : D3D12_COMMAND_QUEUE_DESC* user defined.if nullptr,use default;
-	*	@return value succeeded:return std::shared_ptr<ID3D12CommandQueue>,failed:throw std::exception
+	*	@return succeeded:return std::shared_ptr<ID3D12CommandQueue>,failed:throw std::exception
 	*/
 	std::shared_ptr<ID3D12CommandQueue> CreateCommandQueue(ID3D12Device* device, const D3D12_COMMAND_QUEUE_DESC* queueDesc = nullptr);
 
@@ -34,83 +35,131 @@ namespace d3d
 	*	@brief create ID3D12CommandAllocator and return it;
 	*	@param device : ID3D12Device*
 	*	@param commandList : D3D12_COMMAND_LIST_TYPE user defined;
-	*	@return value succeeded:return std::shared_ptr<ID3D12CommandAllocator>,failed:throw std::exception
+	*	@return succeeded:return std::shared_ptr<ID3D12CommandAllocator>,failed:throw std::exception
 	*/
-	std::shared_ptr<ID3D12CommandAllocator> CreateCommandAllocator(ID3D12Device* device,D3D12_COMMAND_LIST_TYPE listType = D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT);
+	std::shared_ptr<ID3D12CommandAllocator> CreateCommandAllocator(ID3D12Device* device, D3D12_COMMAND_LIST_TYPE listType = D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT);
 
 	/**
-	*	@brief create ID3D12CommandQueue and return it;
+	*	@brief create ID3D12Blob and return it;
 	*	@param fileName : hlsl fileName
 	*	@param shaderName : shader function name
 	*	@param shaderType : shader type(e.g.vs_5_0)
-	*	@return value succeeded:return std::shared_ptr<ID3DBlob>,failed:throw std::exception
+	*	@return succeeded:return std::shared_ptr<ID3DBlob>,failed:throw std::exception
 	*/
 	std::shared_ptr<ID3DBlob> CreateBlob(const std::string& fileName, const std::string& shaderName, const std::string& shaderType);
-	
+
 	/**
 	*	@brief create ID3D12RootSignature and return it;
 	*	@param device : ID3D12Device*
 	*	@param rootDesc : D3D12_ROOT_SIGNATURE_DESC* user defined.if nullptr,use default;
-	*	@return value succeeded:return std::shared_ptr<ID3D12RootSignature>,failed:throw std::exception
+	*	@return succeeded:return std::shared_ptr<ID3D12RootSignature>,failed:throw std::exception
 	*/
 	std::shared_ptr<ID3D12RootSignature> CreateRootSignature(ID3D12Device* device, D3D12_ROOT_SIGNATURE_DESC* rootDesc = nullptr);
 
 	/**
 	*	@brief create D3D12_BLEND_DESC and return it;
 	*	@param blendMode : default,add;
-	*	@return value succeeded:return std::shared_ptr<D3D12_BLEND_DESC>,failed:throw std::exception
+	*	@return D3D12_BLEND_DESC
 	*/
 	D3D12_BLEND_DESC CreateBlendDesc(BlendMode mode = BlendMode::default);
 
 	/**
 	*	@brief create D3D12_RASTERIZER_DESC and return it;
-	*	@return value succeeded:return std::shared_ptr<D3D12_RASTERIZER_DESC>,failed:throw std::exception
+	*	@return D3D12_RASTERIZER_DESC
 	*/
 	D3D12_RASTERIZER_DESC CreateRasterizerDesc();
 
 	/**
-	*	@brief create ID3D12PipelineState and return it;
-	*	@param device : ID3D12Device*
-	*	@return value succeeded:return std::shared_ptr<ID3D12PipelineState>,failed:throw std::exception
+	*	@brief create D3D12_INPUT_LAYOUT_DESC and return it;
+	*   @param semantics : unorderd_map whose key is std::string,value is DXGI_FORMAT of vertex element
+	*	@return D3D12_INPUT_LAYOUT_DESC
 	*/
-	std::shared_ptr<ID3D12PipelineState> CreatePipeLineState(ID3D12Device * device,const D3D12_INPUT_LAYOUT_DESC& layout,ID3D12RootSignature* rootSignature,ID3DBlob* vertexBlob,ID3DBlob* geometryBlob,ID3DBlob* pixelBlob,const D3D12_RASTERIZER_DESC& rasterizeDesc,const D3D12_BLEND_DESC& blend);
+	D3D12_INPUT_LAYOUT_DESC CreateInputLayout(const std::unordered_map<std::string, DXGI_FORMAT>& semantics);
 
 	/**
-	*	@brief create ID3D12DescriptorHeap and return it;
-	*	@param device : ID3D12Device*
-	*	@param descriptorSize : size of descriptor
-	*	@param descriptHeapDesc : D3D12_DESCRIPTOR_HEAP_DESC* user defined.if nullptr,use default;
-	*	@return value succeeded:return std::shared_ptr<ID3D12DescriptorHeap>,failed:throw std::exception
+	*	@brief create ID3D12PipelineState and return it;
+	*	@param device : ID3D12Device*;
+	*	@param layout : const D3D12_INPUT_LAYOUT_DESC&;
+	*	@param rootSignature : ID3D12RootSignature*;
+	*	@param vertexBlob : ID3DBlob* for vertexShader;
+	*	@param geomeryBlob : ID3DBlob* for geometryShader;
+	*	@param pixelBlob : ID3DBlob* for pixelShader;
+	*	@param hullBlob : ID3DBlob* for hullShader;
+	*	@param domainBlob : ID3DBlob* for domainShader;
+	*	@return succeeded:return std::shared_ptr<ID3D12PipelineState>,failed:throw std::exception;
 	*/
-	std::shared_ptr<ID3D12DescriptorHeap> CreateDescriptorHeap(ID3D12Device* device,UINT* descriptorSize, D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc = nullptr);
+	std::shared_ptr<ID3D12PipelineState> CreatePipeLineState(
+		ID3D12Device * device,
+		const D3D12_INPUT_LAYOUT_DESC& layout,
+		ID3D12RootSignature* rootSignature,
+		ID3DBlob* vertexBlob,
+		ID3DBlob* geometryBlob,
+		ID3DBlob* pixelBlob,
+		ID3DBlob* hullBlob,
+		ID3DBlob* domainBlob,
+		const D3D12_RASTERIZER_DESC& rasterizeDesc,
+		const D3D12_BLEND_DESC& blend);
+
+	/**
+	*	@brief create ID3D12DescriptorHeap for RenderTargetView and return it;
+	*	@param device : ID3D12Device*;
+	*	@param descriptHeapDesc : D3D12_DESCRIPTOR_HEAP_DESC* user defined.if nullptr,use default;
+	*	@return succeeded:return std::shared_ptr<ID3D12DescriptorHeap>,failed:throw std::exception;
+	*/
+	std::shared_ptr<ID3D12DescriptorHeap> CreateRTVDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc = nullptr);
+
+	/**
+	*	@brief create ID3D12DescriptorHeap for ConstantBuffertView and return it;
+	*	@param device : ID3D12Device*;
+	*	@param descriptHeapDesc : D3D12_DESCRIPTOR_HEAP_DESC* user defined.if nullptr,use default;
+	*	@return succeeded:return std::shared_ptr<ID3D12DescriptorHeap>,failed:throw std::exception;
+	*/
+	std::shared_ptr<ID3D12DescriptorHeap> CreateCBVDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc = nullptr);
+
+	/**
+	*	@brief create ID3D12DescriptorHeap for ShaderResourceView and return it;
+	*	@param device : ID3D12Device*;
+	*	@param descriptHeapDesc : D3D12_DESCRIPTOR_HEAP_DESC* user defined.if nullptr,use default;
+	*	@return succeeded:return std::shared_ptr<ID3D12DescriptorHeap>,failed:throw std::exception;
+	*/
+	std::shared_ptr<ID3D12DescriptorHeap> CreateSRVDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc = nullptr);
 
 	/**
 	*	@brief create ID3D12GraphicsCommandList and return it;
-	*	@param device : ID3D12Device*
-	*	@param lineType : D3D12_COMMAND_LIST_TYPE,use same type when create ID3D12CommandList
-	*	@param commandAllocator : ID3D12CommandAllocator*
-	*	@param pipeLineState : ID3D12PipelineState*
-	*	@return value succeeded:return std::shared_ptr<ID3D12GraphicsCommandList>,failed:throw std::exception
+	*	@param device : ID3D12Device*;
+	*	@param commandAllocator : ID3D12CommandAllocator*;
+	*	@param pipeLineState : ID3D12PipelineState*;
+	*	@param listType : D3D12_COMMAND_LIST_TYPE,use same type when create ID3D12CommandList;
+	*	@return succeeded:return std::shared_ptr<ID3D12GraphicsCommandList>,failed:throw std::exception
 	*/
-	std::shared_ptr<ID3D12GraphicsCommandList> CreateCommandList(ID3D12Device* device, ID3D12CommandAllocator* commandAllocator, ID3D12PipelineState* pipeLineState,D3D12_COMMAND_LIST_TYPE listType = D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT );
+	std::shared_ptr<ID3D12GraphicsCommandList> CreateCommandList(ID3D12Device* device, ID3D12CommandAllocator* commandAllocator, ID3D12PipelineState* pipeLineState, D3D12_COMMAND_LIST_TYPE listType = D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_DIRECT);
 
 	/**
 	*	@brief create ID3D12Resource for RenderTarget and return it;
-	*	@param device : ID3D12Device*
-	*	@param bufferIndex : index of buffer in swapChain
-	*	@param swapChain : IDXGISwapChain
-	*	@param handle : D3D12_CPU_DESCRIPTOR_HANDLE
-	*	@return value succeeded:return std::shared_ptr<ID3D12Resource>,failed:throw std::exception
+	*	@param device : ID3D12Device*;
+	*	@param swapChain : IDXGISwapChain;
+	*	@param rtvDescriptorHeap : ID3D12DescriptorHeap for renderTarget;
+	*	@param renderTargetNum : num of renderTarget : default value is 2;
+	*	@return succeeded:return std::vector<std::shared_ptr<ID3D12Resource>>,failed:throw std::exception
 	*/
-	std::shared_ptr<ID3D12Resource> CreateRenderTarget(ID3D12Device* device,UINT bufferIndex, IDXGISwapChain* swapChain,const D3D12_CPU_DESCRIPTOR_HANDLE& handle);
+	std::vector<std::shared_ptr<ID3D12Resource>> CreateRenderTargets(ID3D12Device* device, IDXGISwapChain* swapChain, ID3D12DescriptorHeap* rtvDescriptorHeap, UINT renderTargetNum = 2);
 
 	/**
 	*	@brief create ID3D12Resource for RenderTarget and return it;
 	*	@param device : ID3D12Device*
 	*	@param size : size of resource data
-	*	@return value succeeded:return std::shared_ptr<ID3D12Resource>,failed:throw std::exception
+	*	@return succeeded:return std::shared_ptr<ID3D12Resource>,failed:throw std::exception
 	*/
 	std::shared_ptr<ID3D12Resource> CreateResoruce(ID3D12Device* device, size_t size);
+
+	/**
+	*	@brief create ID3D12Resource for Texture and return it;
+	*	@param device : ID3D12Device*
+	*	@param width : width of texture
+	*	@param height : height of texture
+	*	@return succeeded:return std::shared_ptr<ID3D12Resource>,failed:throw std::exception
+	*/
+	std::shared_ptr<ID3D12Resource> CreateTextureResoruce(ID3D12Device* device,float width,float height);
 
 	/**
 	*	@brief create D3D12_VERTEX_BUFFER_VIEW and return it;
@@ -118,32 +167,145 @@ namespace d3d
 	*	@param data : vertex data
 	*	@param vertexSize : size of vertex struct
 	*	@param vertexNum : num of vertex
-	*	@return value succeeded:return std::shared_ptr<D3D12_VERTEX_BUFFER_VIEW>,failed:throw std::exception
+	*	@return D3D12_VERTEX_BUFFER_VIEW
 	*/
-	D3D12_VERTEX_BUFFER_VIEW CreateVetexBufferView(ID3D12Resource* resource,void* data, size_t vertexSize,UINT vertexNum);
+	D3D12_VERTEX_BUFFER_VIEW CreateVetexBufferView(ID3D12Resource* resource, void* data, size_t vertexSize, UINT vertexNum);
+
+	/**
+	*	@brief create ConstantBufferView;
+	*	@param device : ID3D12Device*;
+	*	@param resource : ID3D12Resource*;
+	*	@param data : vertex data;
+	*	@param constantBufferSize : size of constantBuffer struct;
+	*	@param dataBegin : begining of constantBuffer data;
+	*	@param cbvDescriptorHeap : ID3D12DescriptorHeap;
+	*/
+	void CreateConstantBufferView(ID3D12Device* device, ID3D12Resource* resource, void* data, size_t constantBufferSize, UINT8** dataBegin, ID3D12DescriptorHeap* cbvDescriptorHeap);
+
+	/**
+	*	@brief create ShaderResourceView;
+	*	@param device : ID3D12Device*
+	*	@param resource : ID3D12Resource*
+	*	@param srvDescriptorHeap : ID3D12DescriptorHeap*
+	*/
+	void CreateShaderResourceView(ID3D12Device* device, ID3D12Resource* resource, ID3D12DescriptorHeap* srvDescriptorHeap);
+
+	/**
+	*	@brief update D3D12_SUBRESOURCE_DATA;
+	*	@param commandList : ID3D12GraphicsCommandList*;
+	*	@param commandQueue : ID3D12CommandQueue*;
+	*	@param textureResource : ID3D12Resource*
+	*	@param textureHeapResource : ID3D12Resource*
+	*	@param offset : data offset of subResource
+	*	@param subResourceFirstIndex : first index of subResource
+	*	@param subResourceNum : num of subResource
+	*	@param subResource : D3D12_SUBRESOURCE_DATA*
+	*/
+	void UpdateSubresources(
+		ID3D12GraphicsCommandList* commandList,
+		ID3D12CommandQueue* commandQueue,
+		ID3D12Resource* textureResource,
+		ID3D12Resource* textureHeapResource,
+		UINT64 offset,
+		UINT subResourceFirstIndex,
+		UINT subResourceNum,
+		D3D12_SUBRESOURCE_DATA* subResource);
 
 	/**
 	*	@brief create ID3D12Fence and return it;
 	*	@param device : ID3D12Device*
 	*	@param flag : D3D12_FENCE_FLAGS ,default D3D12_FENCE_FLAG_NONE
-	*	@return value succeeded:return std::shared_ptr<ID3D12Fence>,failed:throw std::exception
+	*	@return succeeded:return std::shared_ptr<ID3D12Fence>,failed:throw std::exception
 	*/
 	std::shared_ptr<ID3D12Fence> CreateFence(ID3D12Device* device, D3D12_FENCE_FLAGS flag = D3D12_FENCE_FLAGS::D3D12_FENCE_FLAG_NONE);
 
-	void WaitForPreviousFrame(IDXGISwapChain3* swapChain,UINT* frameIndex,ID3D12CommandQueue* commandQueue, ID3D12Fence* fence, UINT64* fenceValue, HANDLE* fenceEvent);
+	/**
+	*	@brief create D3D12_VIEWPORT and return it;
+	*	@param width : viewport width;
+	*	@param height : viewport height;
+	*	@return D3D12_VIEWPORT
+	*/
+	D3D12_VIEWPORT CreateViewport(float width, float height);
 
-	void PopulateCommandList(
+	/**
+	*	@brief create D3D12_RECT and return it;
+	*	@param width : rect width:
+	*	@param height : rect height;
+	*	@return D3D12_RECT
+	*/
+	D3D12_RECT CreateRect(LONG width, LONG height);
+
+	/**
+	*	@brief wait execution of commandList in previous frame ;
+	*	@param swapChain : IDXGISwapChain3*;
+	*	@param frameIndex : currendFrameIndex;
+	*	@param commandQueue : ID3D12CommandQueue* stored command;
+	*	@param fence : ID3D12Fence*;
+	*	@param fenceEvent : eventHandle for fence;
+	*/
+	void WaitForPreviousFrame(
+		IDXGISwapChain3* swapChain,
+		UINT* frameIndex,
+		ID3D12CommandQueue* commandQueue,
+		ID3D12Fence* fence,
+		HANDLE* fenceEvent);
+
+	/**
+	*	@brief prepare commandList for execution;
+	*	@param commandAllocator : ID3D12CommandAllocator*;
+	*	@param commandList : ID3D12GraphicsCommandList*;
+	*	@param bundleCommandList : ID3D12GraphicsCommandList* of bundle;
+	*	@param pipeLineState : ID3D12PipeLineState*;
+	*	@param rootSignature : ID3D12RootSignature*;
+	*	@param renderTarget : head pointer of ID3D12Resource* for renderTarget;
+	*	@param rtvDescriptorHeap : ID3D12DescriptorHeap for renderTarget;
+	*	@param srvDescriptorHeap : ID3D12DescriptorHeap for shaderResourceView;
+	*	@param cbvDescriptorHeap : ID3D12DescriptorHeap for constantBuffer;
+	*	@param rtvDescriptorSize : size of Descriptor Increment;
+	*	@param viewport : D3D12_VIEWPORT;
+	*	@param rect : D3D12_RECT;
+	*	@param frameIndex : current frame Index;
+	*/
+	void PrepareCommandList(
 		ID3D12CommandAllocator* commandAllocator,
 		ID3D12GraphicsCommandList* commandList,
+		ID3D12GraphicsCommandList* bundleCommandList,
 		ID3D12PipelineState* pipeLineState,
 		ID3D12RootSignature* rootSignature,
 		ID3D12Resource** renderTarget,
-		ID3D12DescriptorHeap* descriptorHeap,
-		const UINT& descriptorSize,
+		ID3D12DescriptorHeap* rtvDescriptorHeap,
+		ID3D12DescriptorHeap* cbvDescriptorHeap,
+		ID3D12DescriptorHeap* srvDescriptorHeap,
+		const UINT& rtvDescriptorSize,
 		const D3D12_VIEWPORT& viewport,
 		const D3D12_RECT& rect,
-		const D3D12_VERTEX_BUFFER_VIEW* vertexBuffer,
 		const int frameIndex);
+
+	/**
+	*	@brief prepare bundle storing command;
+	*	@param bundleAllocator : ID3D12CommandAllocator* for bundle;
+	*	@param bundleCommandList : ID3D12GraphicsCommandList* of bundle;
+	*	@param pipeLineState : ID3D12PipeLineState*;
+	*	@param rootSignature : ID3D12RootSignature*;
+	*	@param cbvDescriptorHeap : ID3D12DescriptorHeap for constantBuffer;
+	*	@param vertexBuffer : D3D12_VERTEX_BUFFER_VIEW*;
+	*/
+	void PrepareBundle(
+		ID3D12CommandAllocator* bundleAllocator,
+		ID3D12GraphicsCommandList* bundleCommandList,
+		ID3D12PipelineState* pipeLineState,
+		ID3D12RootSignature* rootSignature,
+		ID3D12DescriptorHeap* cbvDescriptorHeap,
+		ID3D12DescriptorHeap* srvDescriptorHeap,
+		const D3D12_VERTEX_BUFFER_VIEW* vertexBuffer);
+
+	/**
+	*	@brief reset commandList if closed;
+	*	@param commandAllocator : ID3D12CommandAllocator*;
+	*	@param commandList : ID3D12GraphicsCommandList*;
+	*	@param pipeLineState : ID3D12PipeLineState*;
+	*/
+	void ResetCommandList(ID3D12CommandAllocator* commandAllocator,ID3D12GraphicsCommandList* commandList, ID3D12PipelineState* pipeLineState);
 }
 
 #endif

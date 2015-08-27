@@ -20,13 +20,23 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\d3d.cpp" />
+    <ClCompile Include="src\DDSTextureLoader.cpp" />
     <ClCompile Include="src\dxgi.cpp" />
     <ClCompile Include="src\Source.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="resource\resource.h" />
     <ClInclude Include="src\d3d.h" />
+    <ClInclude Include="src\DDSTextureLoader.h" />
     <ClInclude Include="src\dxgi.h" />
+    <ClInclude Include="src\SafeEventHandle.h" />
     <ClInclude Include="src\Window.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="resource\DirectX12_BaseSystem.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="resource\icon\sample.ico" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{9EB7A9AE-B2A5-449B-AB20-798F6C32454A}</ProjectGuid>

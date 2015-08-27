@@ -3,6 +3,7 @@
 #include <cstdio>       // C/C++標準ヘッダー
 #include <Windows.h>    // Windows APIヘッダー
 #include <tchar.h>      // マルチバイト文字ヘッダー
+#include "../resource/resource.h"
 
 // ウィンドウ作成 
 HWND InitWindow(TCHAR* AppName, HINSTANCE hInstance, WNDPROC WndProc, int width, int height){
@@ -16,7 +17,7 @@ HWND InitWindow(TCHAR* AppName, HINSTANCE hInstance, WNDPROC WndProc, int width,
 	wc.cbClsExtra = 0;
 	wc.cbWndExtra = sizeof(DWORD);
 	wc.hCursor = ::LoadCursor(nullptr, IDC_ARROW);
-	wc.hIcon = nullptr;
+	wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1));
 	wc.hIconSm = nullptr;
 	wc.lpszMenuName = nullptr;
 	wc.lpszClassName = AppName;

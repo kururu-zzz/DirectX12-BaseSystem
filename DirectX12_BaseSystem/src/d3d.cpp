@@ -16,6 +16,7 @@ namespace d3d
 	{
 #ifdef _DEBUG
 		// Enable the D3D12 debug layer.
+		// cf.MicroSoft Sample Source
 		ID3D12Debug* debugController;
 		if (SUCCEEDED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController))))
 		{
@@ -62,7 +63,7 @@ namespace d3d
 		return std::shared_ptr<ID3D12CommandQueue>(commandQueue, ReleaseIUnknown);
 	}
 
-	std::shared_ptr<ID3D12CommandAllocator> CreateCommandAllocator(ID3D12Device* device, D3D12_COMMAND_LIST_TYPE listType) 
+	std::shared_ptr<ID3D12CommandAllocator> CreateCommandAllocator(ID3D12Device* device, D3D12_COMMAND_LIST_TYPE listType)
 	{
 		ID3D12CommandAllocator* commandAllocator;
 		DirectX::ThrowIfFailed(
@@ -78,11 +79,11 @@ namespace d3d
 	{
 		ID3DBlob* blob;
 		WCHAR	path[100];
-		//文字コード変換
 		MultiByteToWideChar(CP_ACP, 0, fileName.c_str(), -1, path, MAX_PATH);
 
 #ifdef _DEBUG
 		// Enable better shader debugging with the graphics debugging tools.
+		// cf.MicroSoft Sample Source
 		UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
 #else
 		UINT compileFlags = 0;
@@ -95,7 +96,7 @@ namespace d3d
 		return std::shared_ptr<ID3DBlob>(blob, ReleaseIUnknown);
 	}
 
-	std::shared_ptr<ID3D12RootSignature> CreateRootSignature(ID3D12Device* device,D3D12_ROOT_SIGNATURE_DESC* rootDesc)
+	std::shared_ptr<ID3D12RootSignature> CreateRootSignature(ID3D12Device* device, D3D12_ROOT_SIGNATURE_DESC* rootDesc)
 	{
 		ID3D12RootSignature* rootSignature;
 		ID3DBlob* pOutBlob;
@@ -103,9 +104,56 @@ namespace d3d
 		D3D12_ROOT_SIGNATURE_DESC defaultDesc = {};
 		if (!rootDesc)
 		{
-			defaultDesc.pParameters = nullptr;
-			defaultDesc.pStaticSamplers = nullptr;
-			defaultDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+			D3D12_DESCRIPTOR_RANGE ranges[2];
+			D3D12_ROOT_PARAMETER rootParameters[2];
+
+			ranges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+			ranges[0].NumDescriptors = 1;
+			ranges[0].BaseShaderRegister = 0;
+			ranges[0].RegisterSpace = 0;
+			ranges[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+			rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+			rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
+			rootParameters[0].DescriptorTable.NumDescriptorRanges = 1;
+			rootParameters[0].DescriptorTable.pDescriptorRanges = &ranges[0];
+
+			ranges[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+			ranges[1].NumDescriptors = 1;
+			ranges[1].BaseShaderRegister = 0;
+			ranges[1].RegisterSpace = 0;
+			ranges[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+			rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+			rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+			rootParameters[1].DescriptorTable.NumDescriptorRanges = 1;
+			rootParameters[1].DescriptorTable.pDescriptorRanges = &ranges[1];
+
+			D3D12_STATIC_SAMPLER_DESC sampler = {};
+			sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+			sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+			sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+			sampler.MipLODBias = 0;
+			sampler.MaxAnisotropy = 0;
+			sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+			sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+			sampler.MinLOD = 0.0f;
+			sampler.MaxLOD = D3D12_FLOAT32_MAX;
+			sampler.ShaderRegister = 0;
+			sampler.RegisterSpace = 0;
+			sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+			defaultDesc.NumParameters = 2;
+			defaultDesc.pParameters = &rootParameters[0];
+			defaultDesc.NumStaticSamplers = 1;
+			defaultDesc.pStaticSamplers = &sampler;
+
+			defaultDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+				D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS |
+				D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+				D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS;
+
 			rootDesc = &defaultDesc;
 		}
 		DirectX::ThrowIfFailed(
@@ -123,7 +171,7 @@ namespace d3d
 				IID_PPV_ARGS(&rootSignature)));
 		pOutBlob->Release();
 		pOutBlob = nullptr;
-		return std::shared_ptr<ID3D12RootSignature>(rootSignature,ReleaseIUnknown);
+		return std::shared_ptr<ID3D12RootSignature>(rootSignature, ReleaseIUnknown);
 	}
 
 	D3D12_BLEND_DESC CreateBlendDesc(BlendMode mode)
@@ -158,8 +206,7 @@ namespace d3d
 		}
 		::ZeroMemory(&blendDesc, sizeof(blendDesc));
 		blendDesc.AlphaToCoverageEnable = FALSE;
-		// TRUEの場合、マルチレンダーターゲットで各レンダーターゲットのブレンドステートの設定を個別に設定できる
-		// FALSEの場合、0番目のみが使用される
+
 		blendDesc.IndependentBlendEnable = FALSE;
 
 		for (UINT i = 0; i < D3D12_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
@@ -171,7 +218,7 @@ namespace d3d
 	D3D12_RASTERIZER_DESC CreateRasterizerDesc()
 	{
 		D3D12_RASTERIZER_DESC rasterizerDesc = {};
-		
+
 		rasterizerDesc.CullMode = D3D12_CULL_MODE::D3D12_CULL_MODE_BACK;
 		rasterizerDesc.FillMode = D3D12_FILL_MODE::D3D12_FILL_MODE_SOLID;
 		rasterizerDesc.DepthClipEnable = TRUE;
@@ -179,13 +226,27 @@ namespace d3d
 		return rasterizerDesc;
 	}
 
+	D3D12_INPUT_LAYOUT_DESC CreateInputLayout(const std::unordered_map<std::string, DXGI_FORMAT>& semantics)
+	{
+		static std::vector<D3D12_INPUT_ELEMENT_DESC> layoutElem;
+		for (auto& semantic : semantics)
+		{
+			D3D12_INPUT_ELEMENT_DESC element = { semantic.first.c_str(), 0, semantic.second, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+			layoutElem.emplace_back(element);
+		};
+		D3D12_INPUT_LAYOUT_DESC inputLayout = { layoutElem.data(),layoutElem.size() };
+		return inputLayout;
+	}
+
 	std::shared_ptr<ID3D12PipelineState> CreatePipeLineState(
-		ID3D12Device * device, 
+		ID3D12Device * device,
 		const D3D12_INPUT_LAYOUT_DESC& layout,
 		ID3D12RootSignature* rootSignature,
 		ID3DBlob* vertexBlob,
 		ID3DBlob* geometryBlob,
 		ID3DBlob* pixelBlob,
+		ID3DBlob* hullBlob,
+		ID3DBlob* domainBlob,
 		const D3D12_RASTERIZER_DESC& rasterizeDesc,
 		const D3D12_BLEND_DESC& blend)
 	{
@@ -193,9 +254,16 @@ namespace d3d
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC gpsDesc = {};
 		gpsDesc.InputLayout = layout;
 		gpsDesc.pRootSignature = rootSignature;
-		gpsDesc.VS = { reinterpret_cast<UINT8*>(vertexBlob->GetBufferPointer()), vertexBlob->GetBufferSize() };
-		gpsDesc.GS = { reinterpret_cast<UINT8*>(geometryBlob->GetBufferPointer()), geometryBlob->GetBufferSize() };
-		gpsDesc.PS = { reinterpret_cast<UINT8*>(pixelBlob->GetBufferPointer()), pixelBlob->GetBufferSize() };
+		if (vertexBlob != nullptr)
+			gpsDesc.VS = { reinterpret_cast<UINT8*>(vertexBlob->GetBufferPointer()), vertexBlob->GetBufferSize() };
+		if (geometryBlob != nullptr)
+			gpsDesc.GS = { reinterpret_cast<UINT8*>(geometryBlob->GetBufferPointer()), geometryBlob->GetBufferSize() };
+		if (pixelBlob != nullptr)
+			gpsDesc.PS = { reinterpret_cast<UINT8*>(pixelBlob->GetBufferPointer()), pixelBlob->GetBufferSize() };
+		if (hullBlob != nullptr)
+			gpsDesc.HS = { reinterpret_cast<UINT8*>(hullBlob->GetBufferPointer()), hullBlob->GetBufferSize() };
+		if (domainBlob != nullptr)
+			gpsDesc.DS = { reinterpret_cast<UINT8*>(domainBlob->GetBufferPointer()), domainBlob->GetBufferSize() };
 		gpsDesc.RasterizerState = rasterizeDesc;
 		gpsDesc.BlendState = blend;
 		gpsDesc.DepthStencilState.DepthEnable = FALSE;
@@ -207,10 +275,10 @@ namespace d3d
 		gpsDesc.SampleDesc.Count = 1;
 		DirectX::ThrowIfFailed(
 			device->CreateGraphicsPipelineState(&gpsDesc, IID_PPV_ARGS(&pipelineState)));
-		return std::shared_ptr<ID3D12PipelineState>(pipelineState,ReleaseIUnknown);
+		return std::shared_ptr<ID3D12PipelineState>(pipelineState, ReleaseIUnknown);
 	}
 
-	std::shared_ptr<ID3D12DescriptorHeap> CreateDescriptorHeap(ID3D12Device* device, UINT* descriptorSize, D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc)
+	std::shared_ptr<ID3D12DescriptorHeap> CreateRTVDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc)
 	{
 		ID3D12DescriptorHeap* descriptorHeap;
 		D3D12_DESCRIPTOR_HEAP_DESC defaultDesc = {};
@@ -221,16 +289,53 @@ namespace d3d
 			defaultDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 			descriptHeapDesc = &defaultDesc;
 		}
-		device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 		DirectX::ThrowIfFailed(
 			device->CreateDescriptorHeap(
-				descriptHeapDesc, 
+				descriptHeapDesc,
 				IID_PPV_ARGS(&descriptorHeap)
 				));
 		return std::shared_ptr<ID3D12DescriptorHeap>(descriptorHeap, ReleaseIUnknown);
 	}
 
-	std::shared_ptr<ID3D12GraphicsCommandList> CreateCommandList(ID3D12Device* device, ID3D12CommandAllocator* commandAllocator,ID3D12PipelineState* pipeLineState, D3D12_COMMAND_LIST_TYPE listType)
+	std::shared_ptr<ID3D12DescriptorHeap> CreateCBVDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc)
+	{
+		ID3D12DescriptorHeap* descriptorHeap;
+		D3D12_DESCRIPTOR_HEAP_DESC defaultDesc = {};
+		if (!descriptHeapDesc)
+		{
+			defaultDesc.NumDescriptors = 1;
+			defaultDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+			defaultDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+			descriptHeapDesc = &defaultDesc;
+		}
+		DirectX::ThrowIfFailed(
+			device->CreateDescriptorHeap(
+				descriptHeapDesc,
+				IID_PPV_ARGS(&descriptorHeap)
+				));
+		return std::shared_ptr<ID3D12DescriptorHeap>(descriptorHeap, ReleaseIUnknown);
+	}
+
+	std::shared_ptr<ID3D12DescriptorHeap> CreateSRVDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc)
+	{
+		ID3D12DescriptorHeap* descriptorHeap;
+		D3D12_DESCRIPTOR_HEAP_DESC defaultDesc = {};
+		if (!descriptHeapDesc)
+		{
+			defaultDesc.NumDescriptors = 1;
+			defaultDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+			defaultDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+			descriptHeapDesc = &defaultDesc;
+		}
+		DirectX::ThrowIfFailed(
+			device->CreateDescriptorHeap(
+				descriptHeapDesc,
+				IID_PPV_ARGS(&descriptorHeap)
+				));
+		return std::shared_ptr<ID3D12DescriptorHeap>(descriptorHeap, ReleaseIUnknown);
+	}
+
+	std::shared_ptr<ID3D12GraphicsCommandList> CreateCommandList(ID3D12Device* device, ID3D12CommandAllocator* commandAllocator, ID3D12PipelineState* pipeLineState, D3D12_COMMAND_LIST_TYPE listType)
 	{
 		ID3D12GraphicsCommandList* commandList;
 		DirectX::ThrowIfFailed(
@@ -241,16 +346,27 @@ namespace d3d
 				pipeLineState,
 				IID_PPV_ARGS(&commandList)
 				));
+		commandList->Close();
 		return std::shared_ptr<ID3D12GraphicsCommandList>(commandList, ReleaseIUnknown);
 	}
 
-	std::shared_ptr<ID3D12Resource> CreateRenderTarget(ID3D12Device * device,UINT bufferIndex ,IDXGISwapChain * swapChain, const D3D12_CPU_DESCRIPTOR_HANDLE& handle)
+	std::vector<std::shared_ptr<ID3D12Resource>> CreateRenderTargets(ID3D12Device * device, IDXGISwapChain * swapChain, ID3D12DescriptorHeap* rtvDescriptorHeap, UINT renderTargetNum)
 	{
-		ID3D12Resource* renderTarget;
-		DirectX::ThrowIfFailed(
-			swapChain->GetBuffer(bufferIndex, IID_PPV_ARGS(&renderTarget)));
-		device->CreateRenderTargetView(renderTarget, nullptr, handle);
-		return std::shared_ptr<ID3D12Resource>(renderTarget,ReleaseIUnknown);
+		std::vector<std::shared_ptr<ID3D12Resource>> renderTargets;
+		renderTargets.reserve(renderTargetNum);
+		D3D12_CPU_DESCRIPTOR_HANDLE handle;
+		handle.ptr = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr;
+		for (UINT i = 0; i < renderTargetNum; ++i)
+		{
+			ID3D12Resource* renderTarget;
+			DirectX::ThrowIfFailed(
+				swapChain->GetBuffer(i, IID_PPV_ARGS(&renderTarget)));
+			device->CreateRenderTargetView(renderTarget, nullptr, handle);
+
+			renderTargets.emplace_back(std::shared_ptr<ID3D12Resource>(renderTarget, ReleaseIUnknown));
+			handle.ptr += device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		}
+		return renderTargets;
 	}
 
 	std::shared_ptr<ID3D12Resource> CreateResoruce(ID3D12Device* device, size_t size)
@@ -278,7 +394,41 @@ namespace d3d
 				));
 		return std::shared_ptr<ID3D12Resource>(resource, ReleaseIUnknown);
 	}
-	D3D12_VERTEX_BUFFER_VIEW CreateVetexBufferView(ID3D12Resource * resource,void* data, size_t vertexSize, UINT vertexNum)
+
+	std::shared_ptr<ID3D12Resource> CreateTextureResoruce(ID3D12Device* device,float width,float height)
+	{
+		ID3D12Resource* resource;
+		D3D12_HEAP_PROPERTIES heapProperties = {};
+		heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
+		heapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
+		heapProperties.CreationNodeMask = 1;
+		heapProperties.VisibleNodeMask = 1;
+
+		D3D12_RESOURCE_DESC textureDesc = {};
+		textureDesc.MipLevels = 1;
+		textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		textureDesc.Width = width;
+		textureDesc.Height = height;
+		textureDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+		textureDesc.DepthOrArraySize = 1;
+		textureDesc.SampleDesc.Count = 1;
+		textureDesc.SampleDesc.Quality = 0;
+		textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+
+		DirectX::ThrowIfFailed(
+			device->CreateCommittedResource(
+				&heapProperties,
+				D3D12_HEAP_FLAG_NONE,
+				&textureDesc,
+				D3D12_RESOURCE_STATE_COPY_DEST,
+				nullptr,    // Clear value
+				IID_PPV_ARGS(&resource)
+				));
+		return std::shared_ptr<ID3D12Resource>(resource, ReleaseIUnknown);
+	}
+
+	D3D12_VERTEX_BUFFER_VIEW CreateVetexBufferView(ID3D12Resource * resource, void* data, size_t vertexSize, UINT vertexNum)
 	{
 		D3D12_VERTEX_BUFFER_VIEW vertexBufferView;
 
@@ -294,30 +444,223 @@ namespace d3d
 		return vertexBufferView;
 	}
 
+	void CreateConstantBufferView(ID3D12Device* device, ID3D12Resource * resource, void * data, size_t constantBufferSize, UINT8** dataBegin, ID3D12DescriptorHeap* cbvDescriptorHeap)
+	{
+		// Describe and create a constant buffer view.
+		// cf.MicroSoft Sample Source
+
+		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
+		cbvDesc.BufferLocation = resource->GetGPUVirtualAddress();
+		// CB size is required to be 256-byte aligned.
+		// cf.MicroSoft Sample Source
+		cbvDesc.SizeInBytes = (constantBufferSize + 255) & ~255;
+		device->CreateConstantBufferView(&cbvDesc, cbvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+
+		ZeroMemory(data, constantBufferSize);
+		DirectX::ThrowIfFailed(
+			resource->Map(0, nullptr, reinterpret_cast<void**>(dataBegin)));
+		memcpy(*dataBegin, data, constantBufferSize);
+		resource->Unmap(0, nullptr);
+
+	}
+
+	void CreateShaderResourceView(ID3D12Device* device, ID3D12Resource* resource, ID3D12DescriptorHeap* srvDescriptorHeap)
+	{
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.Format = resource->GetDesc().Format;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MipLevels = 1;
+		device->CreateShaderResourceView(resource, &srvDesc, srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+	}
+
+	void MemcpySubresource(
+		const D3D12_MEMCPY_DEST* pDest,
+		const D3D12_SUBRESOURCE_DATA* pSrc,
+		SIZE_T RowSizeInBytes,
+		UINT NumRows,
+		UINT NumSlices)
+	{
+		for (UINT z = 0; z < NumSlices; ++z)
+		{
+			BYTE* pDestSlice = reinterpret_cast<BYTE*>(pDest->pData) + pDest->SlicePitch * z;
+			const BYTE* pSrcSlice = reinterpret_cast<const BYTE*>(pSrc->pData) + pSrc->SlicePitch * z;
+			for (UINT y = 0; y < NumRows; ++y)
+			{
+				memcpy(pDestSlice + pDest->RowPitch * y,
+					pSrcSlice + pSrc->RowPitch * y,
+					RowSizeInBytes);
+			}
+		}
+	}
+
+	UINT64 UpdateSubresources(
+		ID3D12GraphicsCommandList* commandList,
+		ID3D12Resource* pDestinationResource,
+		ID3D12Resource* pIntermediate,
+		UINT FirstSubresource,
+		UINT NumSubresources,
+		UINT64 RequiredSize,
+		const D3D12_PLACED_SUBRESOURCE_FOOTPRINT* pLayouts,
+		const UINT* pNumRows,
+		const UINT64* pRowSizesInBytes,
+		const D3D12_SUBRESOURCE_DATA* pSrcData)
+	{
+		// Minor validation
+		D3D12_RESOURCE_DESC IntermediateDesc = pIntermediate->GetDesc();
+		D3D12_RESOURCE_DESC DestinationDesc = pDestinationResource->GetDesc();
+		if (IntermediateDesc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER ||
+			IntermediateDesc.Width < RequiredSize + pLayouts[0].Offset ||
+			RequiredSize >(SIZE_T) - 1 ||
+			(DestinationDesc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER &&
+				(FirstSubresource != 0 || NumSubresources != 1)))
+		{
+			return 0;
+		}
+
+		BYTE* pData;
+		HRESULT hr = pIntermediate->Map(0, NULL, reinterpret_cast<void**>(&pData));
+		if (FAILED(hr))
+		{
+			return 0;
+		}
+
+		for (UINT i = 0; i < NumSubresources; ++i)
+		{
+			if (pRowSizesInBytes[i] >(SIZE_T)-1) return 0;
+			D3D12_MEMCPY_DEST DestData = { pData + pLayouts[i].Offset, pLayouts[i].Footprint.RowPitch, pLayouts[i].Footprint.RowPitch * pNumRows[i] };
+			MemcpySubresource(&DestData, &pSrcData[i], (SIZE_T)pRowSizesInBytes[i], pNumRows[i], pLayouts[i].Footprint.Depth);
+		}
+		pIntermediate->Unmap(0, NULL);
+
+		if (DestinationDesc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER)
+		{
+			D3D12_BOX srcBox;
+			srcBox.left = UINT(pLayouts[0].Offset);
+			srcBox.top = 0;
+			srcBox.front = 0;
+			srcBox.right = UINT(pLayouts[0].Offset + pLayouts[0].Footprint.Width);
+			srcBox.bottom = 1;
+			srcBox.back = 1;
+			commandList->CopyBufferRegion(
+				pDestinationResource, 0, pIntermediate, pLayouts[0].Offset, pLayouts[0].Footprint.Width);
+		}
+		else
+		{
+			for (UINT i = 0; i < NumSubresources; ++i)
+			{
+				D3D12_TEXTURE_COPY_LOCATION dst;
+				D3D12_TEXTURE_COPY_LOCATION src;
+				dst.pResource = pDestinationResource;
+				dst.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+				dst.SubresourceIndex = i + FirstSubresource;
+
+				src.pResource = pIntermediate;
+				src.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+				src.PlacedFootprint = pLayouts[i];
+				commandList->CopyTextureRegion(&dst, 0, 0, 0, &src, nullptr);
+			}
+		}
+		return RequiredSize;
+	}
+
+	// Heap-allocating UpdateSubresources implementation
+	void UpdateSubresources(
+		ID3D12GraphicsCommandList* commandList,
+		ID3D12CommandQueue* commandQueue,
+		ID3D12Resource* textureResource,
+		ID3D12Resource* textureHeapResource,
+		UINT64 offset,
+		UINT subResourceFirstIndex,
+		UINT subResourceNum,
+		D3D12_SUBRESOURCE_DATA* subResource)
+	{
+		UINT64 RequiredSize = 0;
+		UINT64 MemToAlloc = static_cast<UINT64>(sizeof(D3D12_PLACED_SUBRESOURCE_FOOTPRINT) + sizeof(UINT) + sizeof(UINT64)) * subResourceNum;
+		if (MemToAlloc > SIZE_MAX)
+		{
+			throw std::exception();
+		}
+		void* pMem = HeapAlloc(GetProcessHeap(), 0, static_cast<SIZE_T>(MemToAlloc));
+		if (pMem == NULL)
+		{
+			throw std::exception();
+		}
+		D3D12_PLACED_SUBRESOURCE_FOOTPRINT* pLayouts = reinterpret_cast<D3D12_PLACED_SUBRESOURCE_FOOTPRINT*>(pMem);
+		UINT64* pRowSizesInBytes = reinterpret_cast<UINT64*>(pLayouts + subResourceNum);
+		UINT* pNumRows = reinterpret_cast<UINT*>(pRowSizesInBytes + subResourceNum);
+
+		D3D12_RESOURCE_DESC Desc = textureResource->GetDesc();
+		ID3D12Device* device;
+		textureResource->GetDevice(__uuidof(*device), reinterpret_cast<void**>(&device));
+		device->GetCopyableFootprints(&Desc, subResourceFirstIndex, subResourceNum, offset, pLayouts, pNumRows, pRowSizesInBytes, &RequiredSize);
+		device->Release();
+
+		UINT64 Result = UpdateSubresources(commandList, textureResource, textureHeapResource, subResourceFirstIndex, subResourceNum, RequiredSize, pLayouts, pNumRows, pRowSizesInBytes, subResource);
+		HeapFree(GetProcessHeap(), 0, pMem);
+
+		D3D12_RESOURCE_BARRIER result;
+		result.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		result.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		result.Transition.pResource = textureResource;
+		result.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		result.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+		result.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		commandList->ResourceBarrier(1, &result);
+		commandList->Close();
+		ID3D12CommandList* ppCommandLists[] = { commandList };
+		commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+	}
+
 	std::shared_ptr<ID3D12Fence> CreateFence(ID3D12Device * device, D3D12_FENCE_FLAGS flag)
 	{
 		ID3D12Fence* fence;
 		DirectX::ThrowIfFailed(
 			device->CreateFence(
-				0, 
+				0,
 				D3D12_FENCE_FLAG_NONE,
 				IID_PPV_ARGS(&fence)));
-		return std::shared_ptr<ID3D12Fence>(fence,ReleaseIUnknown);
+		return std::shared_ptr<ID3D12Fence>(fence, ReleaseIUnknown);
 	}
 
-	void WaitForPreviousFrame(IDXGISwapChain3* swapChain, UINT *frameIndex, ID3D12CommandQueue* commandQueue, ID3D12Fence* fence, UINT64* fenceValue, HANDLE* fenceEvent)
+	D3D12_VIEWPORT CreateViewport(float width, float height)
+	{
+		D3D12_VIEWPORT viewport;
+		viewport.TopLeftX = viewport.TopLeftY = 0.f;
+		viewport.Width = width;
+		viewport.Height = height;
+		viewport.MaxDepth = 1.0f;
+		viewport.MinDepth = 0.0f;
+		return viewport;
+	}
+
+	D3D12_RECT CreateRect(LONG width, LONG height)
+	{
+		D3D12_RECT rect;
+		rect.left = rect.top = 0;
+		rect.right = width;
+		rect.bottom = height;
+		return rect;
+	}
+
+	void WaitForPreviousFrame(IDXGISwapChain3* swapChain, UINT *frameIndex, ID3D12CommandQueue* commandQueue, ID3D12Fence* fence, HANDLE* fenceEvent)
 	{
 		// WAITING FOR THE FRAME TO COMPLETE BEFORE CONTINUING IS NOT BEST PRACTICE.
 		// This is code implemented as such for simplicity. More advanced samples 
 		// illustrate how to use fences for efficient resource usage.
+		// cf.MicroSoft Sample Source
 
 		// Signal and increment the fence value.
-		const UINT64 cfenceValue = *fenceValue;
+		// cf.MicroSoft Sample Source
+		static UINT fenceValue = 1;
+		const UINT64 cfenceValue = fenceValue;
 		DirectX::ThrowIfFailed(
 			commandQueue->Signal(fence, cfenceValue));
-		*fenceValue += 1;
+		fenceValue += 1;
 
 		// Wait until the previous frame is finished.
+		// cf.MicroSoft Sample Source
+
 		if (fence->GetCompletedValue() < cfenceValue)
 		{
 			DirectX::ThrowIfFailed(
@@ -328,32 +671,42 @@ namespace d3d
 		*frameIndex = swapChain->GetCurrentBackBufferIndex();
 	}
 
-	void PopulateCommandList(
+	void PrepareCommandList(
 		ID3D12CommandAllocator* commandAllocator,
 		ID3D12GraphicsCommandList* commandList,
+		ID3D12GraphicsCommandList* bundleCommandList,
 		ID3D12PipelineState* pipeLineState,
 		ID3D12RootSignature* rootSignature,
 		ID3D12Resource** renderTarget,
-		ID3D12DescriptorHeap* descriptorHeap,
-		const UINT& descriptorSize,
+		ID3D12DescriptorHeap* rtvDescriptorHeap,
+		ID3D12DescriptorHeap* cbvDescriptorHeap,
+		ID3D12DescriptorHeap* srvDescriptorHeap,
+		const UINT& rtvDescriptorSize,
 		const D3D12_VIEWPORT& viewport,
 		const D3D12_RECT& rect,
-		const D3D12_VERTEX_BUFFER_VIEW* vertexBuffer,
 		const int frameIndex
 		)
 	{
 		// Command list allocators can only be reset when the associated 
 		// command lists have finished execution on the GPU; apps should use 
 		// fences to determine GPU execution progress.
-		DirectX::ThrowIfFailed(commandAllocator->Reset());
+		// cf.MicroSoft Sample Source
 
 		// However, when ExecuteCommandList() is called on a particular command 
 		// list, that command list can then be reset at any time and must be before 
 		// re-recording.
-		DirectX::ThrowIfFailed(commandList->Reset(commandAllocator, pipeLineState));
+		// cf.MicroSoft Sample Source
+
+		ResetCommandList(commandAllocator, commandList, pipeLineState);
 
 		// Set necessary state.
+		// cf.MicroSoft Sample Source
+
 		commandList->SetGraphicsRootSignature(rootSignature);
+
+		commandList->SetDescriptorHeaps(1, &cbvDescriptorHeap);
+		commandList->SetDescriptorHeaps(1, &srvDescriptorHeap);
+
 		commandList->RSSetViewports(1, &viewport);
 		commandList->RSSetScissorRects(1, &rect);
 
@@ -364,20 +717,20 @@ namespace d3d
 		result.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
 		result.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		result.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		
+
 		// Indicate that the back buffer will be used as a render target.
+		// cf.MicroSoft Sample Source
+
 		commandList->ResourceBarrier(1, &result);
 
 		D3D12_CPU_DESCRIPTOR_HANDLE handle;
-		handle.ptr = descriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + frameIndex * descriptorSize;
+		handle.ptr = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + frameIndex * rtvDescriptorSize;
 		commandList->OMSetRenderTargets(1, &handle, FALSE, nullptr);
 
-		// Record commands.
 		const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
 		commandList->ClearRenderTargetView(handle, clearColor, 0, nullptr);
-		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		commandList->IASetVertexBuffers(0, 1, vertexBuffer);
-		commandList->DrawInstanced(3, 1, 0, 0);
+
+		commandList->ExecuteBundle(bundleCommandList);
 
 		result.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		result.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -387,8 +740,41 @@ namespace d3d
 		result.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
 		// Indicate that the back buffer will now be used to present.
+		// cf.MicroSoft Sample Source
+
 		commandList->ResourceBarrier(1, &result);
 
 		DirectX::ThrowIfFailed(commandList->Close());
+	}
+
+	void PrepareBundle(
+		ID3D12CommandAllocator* bundleAllocator,
+		ID3D12GraphicsCommandList* bundleCommandList,
+		ID3D12PipelineState* pipeLineState,
+		ID3D12RootSignature* rootSignature,
+		ID3D12DescriptorHeap* cbvDescriptorHeap,
+		ID3D12DescriptorHeap* srvDescriptorHeap,
+		const D3D12_VERTEX_BUFFER_VIEW* vertexBuffer
+		)
+	{
+		ResetCommandList(bundleAllocator,bundleCommandList,pipeLineState);
+
+		bundleCommandList->SetGraphicsRootSignature(rootSignature);
+		bundleCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+		bundleCommandList->IASetVertexBuffers(0, 1, vertexBuffer);
+
+		//SetGraphicsRootDescriptorTable call after SetDescriptorHeap 
+		bundleCommandList->SetDescriptorHeaps(1, &cbvDescriptorHeap);
+		bundleCommandList->SetGraphicsRootDescriptorTable(0, cbvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+
+		bundleCommandList->SetDescriptorHeaps(1, &srvDescriptorHeap);
+		bundleCommandList->SetGraphicsRootDescriptorTable(1, srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+		bundleCommandList->DrawInstanced(4, 1, 0, 0);
+		bundleCommandList->Close();
+	}
+	void ResetCommandList(ID3D12CommandAllocator * commandAllocator, ID3D12GraphicsCommandList * commandList, ID3D12PipelineState * pipeLineState)
+	{
+		DirectX::ThrowIfFailed(commandAllocator->Reset());
+		DirectX::ThrowIfFailed(commandList->Reset(commandAllocator, pipeLineState));
 	}
 }
