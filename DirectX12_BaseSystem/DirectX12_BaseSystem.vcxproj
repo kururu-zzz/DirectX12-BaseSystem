@@ -19,18 +19,17 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\d3d.cpp" />
-    <ClCompile Include="src\DDSTextureLoader.cpp" />
-    <ClCompile Include="src\dxgi.cpp" />
+    <ClCompile Include="src\core\d3d.cpp" />
+    <ClCompile Include="src\core\dxgi.cpp" />
+    <ClCompile Include="src\object\DDSTextureLoader.cpp" />
     <ClCompile Include="src\Source.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="resource\resource.h" />
-    <ClInclude Include="src\d3d.h" />
-    <ClInclude Include="src\DDSTextureLoader.h" />
-    <ClInclude Include="src\dxgi.h" />
-    <ClInclude Include="src\SafeEventHandle.h" />
-    <ClInclude Include="src\Window.h" />
+    <ClInclude Include="src\core\d3d.h" />
+    <ClInclude Include="src\core\dxgi.h" />
+    <ClInclude Include="src\core\SafeEventHandle.h" />
+    <ClInclude Include="src\core\Window.h" />
+    <ClInclude Include="src\object\DDSTextureLoader.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="resource\DirectX12_BaseSystem.rc" />
