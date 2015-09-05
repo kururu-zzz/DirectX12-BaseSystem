@@ -216,7 +216,7 @@ namespace d3d
 		return rasterizerDesc;
 	}
 
-	D3D12_INPUT_LAYOUT_DESC CreateInputLayout(const std::unordered_map<std::string, DXGI_FORMAT>& semantics)
+	D3D12_INPUT_LAYOUT_DESC CreateInputLayout(const std::vector<std::pair<std::string, DXGI_FORMAT>>& semantics)
 	{
 		static std::vector<D3D12_INPUT_ELEMENT_DESC> layoutElem;
 		for (auto& semantic : semantics)
@@ -341,7 +341,7 @@ namespace d3d
 		return renderTargets;
 	}
 
-	std::shared_ptr<ID3D12Resource> CreateResoruce(ID3D12Device* device, size_t size)
+	std::shared_ptr<ID3D12Resource> CreateResource(ID3D12Device* device, size_t size)
 	{
 		ID3D12Resource* resource;
 		D3D12_HEAP_PROPERTIES heapProperties = {};

@@ -43,9 +43,7 @@
 #define _Use_decl_annotations_
 #endif
 
-struct DDS_HEADER;
-
 namespace DirectX
 {
-	void CreateTextureData(const std::string& fileName,std::vector<UINT8>* textureData);
+	void CreateTextureData(const std::string& fileName,std::vector<UINT8>* textureData,UINT* width,UINT* height);
 }

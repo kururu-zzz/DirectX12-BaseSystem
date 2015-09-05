@@ -7,7 +7,7 @@ struct InputVS
 {
 	float3 pos:IN_POSITION;
 	float4 color:IN_COLOR;
-	float2 uv : IN_UV;
+	float2 uv : IN_TEXCOORD;
 };
 struct OutputVS
 {

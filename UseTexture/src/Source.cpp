@@ -109,10 +109,10 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 		{ { -0.45f, -0.5f, 0.0f },{ 0.0f, 0.0f, 1.0f, 1.0f },{0.f,1.f}   }
 	};
 
-	std::unordered_map<std::string, DXGI_FORMAT> semantics;
-	semantics.emplace("IN_POSITION", DXGI_FORMAT_R32G32B32_FLOAT);
-	semantics.emplace("IN_COLOR", DXGI_FORMAT_R32G32B32A32_FLOAT);
-	semantics.emplace("IN_UV", DXGI_FORMAT_R32G32_FLOAT);
+	std::vector<std::pair<std::string, DXGI_FORMAT>> semantics;
+	semantics.emplace_back("IN_POSITION", DXGI_FORMAT_R32G32B32_FLOAT);
+	semantics.emplace_back("IN_COLOR", DXGI_FORMAT_R32G32B32A32_FLOAT);
+	semantics.emplace_back("IN_UV", DXGI_FORMAT_R32G32_FLOAT);
 
 	auto layout = d3d::CreateInputLayout(semantics);
 
@@ -122,7 +122,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	device->GetCopyableFootprints(&textureResource->GetDesc(), 0, 1, 0, nullptr, nullptr, nullptr, &bufSize);
 
 	auto textureData = GenerateTextureData();
-	auto textureHeapResource = d3d::CreateResoruce(device.get(), bufSize);
+	auto textureHeapResource = d3d::CreateResource(device.get(), bufSize);
 
 	D3D12_SUBRESOURCE_DATA textureResourceData = {};
 	textureResourceData.pData = &textureData[0];
@@ -154,7 +154,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	d3d::UpdateSubresources(commandList.get(), textureResource.get(), textureHeapResource.get(), 0, 0, 1, &textureResourceData);
 
-	auto vertexResource = d3d::CreateResoruce(device.get(), sizeof(triangleVerts)*sizeof(Vertex));
+	auto vertexResource = d3d::CreateResource(device.get(), sizeof(triangleVerts)*sizeof(Vertex));
 	auto vertexBufferView = d3d::CreateVetexBufferView(vertexResource.get(), triangleVerts, sizeof(Vertex), _countof(triangleVerts));
 
 	ID3D12CommandList* ppCommandLists[] = { commandList.get() };

@@ -7,6 +7,8 @@
 
 namespace d3d
 {
+	static std::shared_ptr<ID3D12Device> device;
+
 	void ReleaseIUnknown(IUnknown* p)
 	{
 		p->Release();
@@ -45,8 +47,18 @@ namespace d3d
 		}
 		return std::shared_ptr<ID3D12Device>(device, ReleaseIUnknown);
 	}
-	std::shared_ptr<ID3D12CommandQueue> CreateCommandQueue(ID3D12Device* device, const D3D12_COMMAND_QUEUE_DESC* queueDesc)
+
+	void CheckExistDevice()
 	{
+		if (device == nullptr)
+		{
+			device = CreateDevice();
+		}
+	}
+
+	std::shared_ptr<ID3D12CommandQueue> CreateCommandQueue(const D3D12_COMMAND_QUEUE_DESC* queueDesc)
+	{
+		CheckExistDevice();
 		ID3D12CommandQueue* commandQueue;
 		D3D12_COMMAND_QUEUE_DESC defaultDesc = {};
 		if (!queueDesc)
@@ -63,8 +75,9 @@ namespace d3d
 		return std::shared_ptr<ID3D12CommandQueue>(commandQueue, ReleaseIUnknown);
 	}
 
-	std::shared_ptr<ID3D12CommandAllocator> CreateCommandAllocator(ID3D12Device* device, D3D12_COMMAND_LIST_TYPE listType)
+	std::shared_ptr<ID3D12CommandAllocator> CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE listType)
 	{
+		CheckExistDevice();
 		ID3D12CommandAllocator* commandAllocator;
 		DirectX::ThrowIfFailed(
 			device->CreateCommandAllocator(
@@ -96,7 +109,7 @@ namespace d3d
 		return std::shared_ptr<ID3DBlob>(blob, ReleaseIUnknown);
 	}
 
-	std::shared_ptr<ID3D12RootSignature> CreateRootSignature(ID3D12Device* device, D3D12_ROOT_SIGNATURE_DESC* rootDesc)
+	std::shared_ptr<ID3D12RootSignature> CreateRootSignature(D3D12_ROOT_SIGNATURE_DESC* rootDesc)
 	{
 		ID3D12RootSignature* rootSignature;
 		ID3DBlob* pOutBlob;
@@ -182,7 +195,7 @@ namespace d3d
 
 		if (mode == BlendMode::default)
 		{
-			renderTarget.BlendEnable = FALSE;
+			renderTarget.BlendEnable = TRUE;
 			renderTarget.SrcBlend = D3D12_BLEND_SRC_ALPHA;
 			renderTarget.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
 			renderTarget.BlendOp = D3D12_BLEND_OP_ADD;
@@ -194,7 +207,7 @@ namespace d3d
 		}
 		else if (mode == BlendMode::add)
 		{
-			renderTarget.BlendEnable = FALSE;
+			renderTarget.BlendEnable = TRUE;
 			renderTarget.SrcBlend = D3D12_BLEND_SRC_ALPHA;
 			renderTarget.DestBlend = D3D12_BLEND_ONE;
 			renderTarget.BlendOp = D3D12_BLEND_OP_ADD;
@@ -226,7 +239,7 @@ namespace d3d
 		return rasterizerDesc;
 	}
 
-	D3D12_INPUT_LAYOUT_DESC CreateInputLayout(const std::unordered_map<std::string, DXGI_FORMAT>& semantics)
+	D3D12_INPUT_LAYOUT_DESC CreateInputLayout(const std::vector<std::pair<std::string, DXGI_FORMAT>>& semantics)
 	{
 		static std::vector<D3D12_INPUT_ELEMENT_DESC> layoutElem;
 		for (auto& semantic : semantics)
@@ -239,7 +252,6 @@ namespace d3d
 	}
 
 	std::shared_ptr<ID3D12PipelineState> CreatePipeLineState(
-		ID3D12Device * device,
 		const D3D12_INPUT_LAYOUT_DESC& layout,
 		ID3D12RootSignature* rootSignature,
 		ID3DBlob* vertexBlob,
@@ -250,6 +262,7 @@ namespace d3d
 		const D3D12_RASTERIZER_DESC& rasterizeDesc,
 		const D3D12_BLEND_DESC& blend)
 	{
+		CheckExistDevice();
 		ID3D12PipelineState* pipelineState;
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC gpsDesc = {};
 		gpsDesc.InputLayout = layout;
@@ -278,7 +291,7 @@ namespace d3d
 		return std::shared_ptr<ID3D12PipelineState>(pipelineState, ReleaseIUnknown);
 	}
 
-	std::shared_ptr<ID3D12DescriptorHeap> CreateRTVDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc)
+	std::shared_ptr<ID3D12DescriptorHeap> CreateRTVDescriptorHeap(D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc)
 	{
 		ID3D12DescriptorHeap* descriptorHeap;
 		D3D12_DESCRIPTOR_HEAP_DESC defaultDesc = {};
@@ -297,8 +310,9 @@ namespace d3d
 		return std::shared_ptr<ID3D12DescriptorHeap>(descriptorHeap, ReleaseIUnknown);
 	}
 
-	std::shared_ptr<ID3D12DescriptorHeap> CreateCBVDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc)
+	std::shared_ptr<ID3D12DescriptorHeap> CreateCBVDescriptorHeap(D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc)
 	{
+		CheckExistDevice();
 		ID3D12DescriptorHeap* descriptorHeap;
 		D3D12_DESCRIPTOR_HEAP_DESC defaultDesc = {};
 		if (!descriptHeapDesc)
@@ -316,14 +330,15 @@ namespace d3d
 		return std::shared_ptr<ID3D12DescriptorHeap>(descriptorHeap, ReleaseIUnknown);
 	}
 
-	std::shared_ptr<ID3D12DescriptorHeap> CreateSRVDescriptorHeap(ID3D12Device* device, D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc)
+	std::shared_ptr<ID3D12DescriptorHeap> CreateSRVDescriptorHeap(D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc)
 	{
+		CheckExistDevice();
 		ID3D12DescriptorHeap* descriptorHeap;
 		D3D12_DESCRIPTOR_HEAP_DESC defaultDesc = {};
 		if (!descriptHeapDesc)
 		{
 			defaultDesc.NumDescriptors = 1;
-			defaultDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+			defaultDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 			defaultDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 			descriptHeapDesc = &defaultDesc;
 		}
@@ -335,8 +350,9 @@ namespace d3d
 		return std::shared_ptr<ID3D12DescriptorHeap>(descriptorHeap, ReleaseIUnknown);
 	}
 
-	std::shared_ptr<ID3D12GraphicsCommandList> CreateCommandList(ID3D12Device* device, ID3D12CommandAllocator* commandAllocator, ID3D12PipelineState* pipeLineState, D3D12_COMMAND_LIST_TYPE listType)
+	std::shared_ptr<ID3D12GraphicsCommandList> CreateCommandList(ID3D12CommandAllocator* commandAllocator, ID3D12PipelineState* pipeLineState, D3D12_COMMAND_LIST_TYPE listType)
 	{
+		CheckExistDevice();
 		ID3D12GraphicsCommandList* commandList;
 		DirectX::ThrowIfFailed(
 			device->CreateCommandList(
@@ -350,8 +366,9 @@ namespace d3d
 		return std::shared_ptr<ID3D12GraphicsCommandList>(commandList, ReleaseIUnknown);
 	}
 
-	std::vector<std::shared_ptr<ID3D12Resource>> CreateRenderTargets(ID3D12Device * device, IDXGISwapChain * swapChain, ID3D12DescriptorHeap* rtvDescriptorHeap, UINT renderTargetNum)
+	std::vector<std::shared_ptr<ID3D12Resource>> CreateRenderTargets(IDXGISwapChain * swapChain, ID3D12DescriptorHeap* rtvDescriptorHeap, UINT renderTargetNum)
 	{
+		CheckExistDevice();
 		std::vector<std::shared_ptr<ID3D12Resource>> renderTargets;
 		renderTargets.reserve(renderTargetNum);
 		D3D12_CPU_DESCRIPTOR_HANDLE handle;
@@ -369,8 +386,9 @@ namespace d3d
 		return renderTargets;
 	}
 
-	std::shared_ptr<ID3D12Resource> CreateResoruce(ID3D12Device* device, size_t size)
+	std::shared_ptr<ID3D12Resource> CreateResource(size_t size)
 	{
+		CheckExistDevice();
 		ID3D12Resource* resource;
 		D3D12_HEAP_PROPERTIES heapProperties = {};
 		heapProperties.Type = D3D12_HEAP_TYPE::D3D12_HEAP_TYPE_UPLOAD;
@@ -395,7 +413,14 @@ namespace d3d
 		return std::shared_ptr<ID3D12Resource>(resource, ReleaseIUnknown);
 	}
 
-	std::shared_ptr<ID3D12Resource> CreateTextureResoruce(ID3D12Device* device,float width,float height)
+	std::shared_ptr<ID3D12Resource> CreateResource(ID3D12Resource* textureResource)
+	{
+		UINT64 bufSize;
+		device->GetCopyableFootprints(&textureResource->GetDesc(), 0, 1, 0, nullptr, nullptr, nullptr, &bufSize);
+		return CreateResource(bufSize);
+	}
+
+	std::shared_ptr<ID3D12Resource> CreateTextureResoruce(UINT width,UINT height)
 	{
 		ID3D12Resource* resource;
 		D3D12_HEAP_PROPERTIES heapProperties = {};
@@ -444,8 +469,9 @@ namespace d3d
 		return vertexBufferView;
 	}
 
-	void CreateConstantBufferView(ID3D12Device* device, ID3D12Resource * resource, void * data, size_t constantBufferSize, UINT8** dataBegin, ID3D12DescriptorHeap* cbvDescriptorHeap)
+	void CreateConstantBufferView(ID3D12Resource * resource, void * data, size_t constantBufferSize, UINT8** dataBegin, ID3D12DescriptorHeap* cbvDescriptorHeap)
 	{
+		CheckExistDevice();
 		// Describe and create a constant buffer view.
 		// cf.MicroSoft Sample Source
 
@@ -464,8 +490,9 @@ namespace d3d
 
 	}
 
-	void CreateShaderResourceView(ID3D12Device* device, ID3D12Resource* resource, ID3D12DescriptorHeap* srvDescriptorHeap)
+	void CreateShaderResourceView(ID3D12Resource* resource, ID3D12DescriptorHeap* srvDescriptorHeap)
 	{
+		CheckExistDevice();
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 		srvDesc.Format = resource->GetDesc().Format;
@@ -567,7 +594,6 @@ namespace d3d
 	// Heap-allocating UpdateSubresources implementation
 	void UpdateSubresources(
 		ID3D12GraphicsCommandList* commandList,
-		ID3D12CommandQueue* commandQueue,
 		ID3D12Resource* textureResource,
 		ID3D12Resource* textureHeapResource,
 		UINT64 offset,
@@ -598,22 +624,11 @@ namespace d3d
 
 		UINT64 Result = UpdateSubresources(commandList, textureResource, textureHeapResource, subResourceFirstIndex, subResourceNum, RequiredSize, pLayouts, pNumRows, pRowSizesInBytes, subResource);
 		HeapFree(GetProcessHeap(), 0, pMem);
-
-		D3D12_RESOURCE_BARRIER result;
-		result.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		result.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		result.Transition.pResource = textureResource;
-		result.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-		result.Transition.StateAfter = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-		result.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		commandList->ResourceBarrier(1, &result);
-		commandList->Close();
-		ID3D12CommandList* ppCommandLists[] = { commandList };
-		commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 	}
 
-	std::shared_ptr<ID3D12Fence> CreateFence(ID3D12Device * device, D3D12_FENCE_FLAGS flag)
+	std::shared_ptr<ID3D12Fence> CreateFence(D3D12_FENCE_FLAGS flag)
 	{
+		CheckExistDevice();
 		ID3D12Fence* fence;
 		DirectX::ThrowIfFailed(
 			device->CreateFence(
@@ -671,21 +686,16 @@ namespace d3d
 		*frameIndex = swapChain->GetCurrentBackBufferIndex();
 	}
 
-	void PrepareCommandList(
+	void BeginRendering(
 		ID3D12CommandAllocator* commandAllocator,
 		ID3D12GraphicsCommandList* commandList,
-		ID3D12GraphicsCommandList* bundleCommandList,
 		ID3D12PipelineState* pipeLineState,
 		ID3D12RootSignature* rootSignature,
-		ID3D12Resource** renderTarget,
 		ID3D12DescriptorHeap* rtvDescriptorHeap,
-		ID3D12DescriptorHeap* cbvDescriptorHeap,
-		ID3D12DescriptorHeap* srvDescriptorHeap,
-		const UINT& rtvDescriptorSize,
+		ID3D12Resource** renderTarget,
 		const D3D12_VIEWPORT& viewport,
 		const D3D12_RECT& rect,
-		const int frameIndex
-		)
+		const int frameIndex)
 	{
 		// Command list allocators can only be reset when the associated 
 		// command lists have finished execution on the GPU; apps should use 
@@ -696,16 +706,12 @@ namespace d3d
 		// list, that command list can then be reset at any time and must be before 
 		// re-recording.
 		// cf.MicroSoft Sample Source
-
 		ResetCommandList(commandAllocator, commandList, pipeLineState);
 
 		// Set necessary state.
 		// cf.MicroSoft Sample Source
 
 		commandList->SetGraphicsRootSignature(rootSignature);
-
-		commandList->SetDescriptorHeaps(1, &cbvDescriptorHeap);
-		commandList->SetDescriptorHeaps(1, &srvDescriptorHeap);
 
 		commandList->RSSetViewports(1, &viewport);
 		commandList->RSSetScissorRects(1, &rect);
@@ -723,15 +729,27 @@ namespace d3d
 
 		commandList->ResourceBarrier(1, &result);
 
+		UINT rtvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
 		D3D12_CPU_DESCRIPTOR_HANDLE handle;
 		handle.ptr = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + frameIndex * rtvDescriptorSize;
-		commandList->OMSetRenderTargets(1, &handle, FALSE, nullptr);
+		commandList->OMSetRenderTargets(1, &handle, false, nullptr);
 
 		const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
 		commandList->ClearRenderTargetView(handle, clearColor, 0, nullptr);
+	}
 
-		commandList->ExecuteBundle(bundleCommandList);
-
+	void EndRendering(
+		ID3D12CommandAllocator* commandAllocator,
+		ID3D12GraphicsCommandList* commandList,
+		ID3D12CommandQueue* commandQueue,
+		ID3D12PipelineState* pipeLineState,
+		ID3D12RootSignature* rootSignature,
+		IDXGISwapChain* swapChain,
+		ID3D12Resource** renderTarget,
+		const int frameIndex)
+	{
+		D3D12_RESOURCE_BARRIER result;
 		result.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		result.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 		result.Transition.pResource = renderTarget[frameIndex];
@@ -745,32 +763,11 @@ namespace d3d
 		commandList->ResourceBarrier(1, &result);
 
 		DirectX::ThrowIfFailed(commandList->Close());
-	}
 
-	void PrepareBundle(
-		ID3D12CommandAllocator* bundleAllocator,
-		ID3D12GraphicsCommandList* bundleCommandList,
-		ID3D12PipelineState* pipeLineState,
-		ID3D12RootSignature* rootSignature,
-		ID3D12DescriptorHeap* cbvDescriptorHeap,
-		ID3D12DescriptorHeap* srvDescriptorHeap,
-		const D3D12_VERTEX_BUFFER_VIEW* vertexBuffer
-		)
-	{
-		ResetCommandList(bundleAllocator,bundleCommandList,pipeLineState);
+		ID3D12CommandList* ppCommandLists[] = { commandList };
+		commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
-		bundleCommandList->SetGraphicsRootSignature(rootSignature);
-		bundleCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
-		bundleCommandList->IASetVertexBuffers(0, 1, vertexBuffer);
-
-		//SetGraphicsRootDescriptorTable call after SetDescriptorHeap 
-		bundleCommandList->SetDescriptorHeaps(1, &cbvDescriptorHeap);
-		bundleCommandList->SetGraphicsRootDescriptorTable(0, cbvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-
-		bundleCommandList->SetDescriptorHeaps(1, &srvDescriptorHeap);
-		bundleCommandList->SetGraphicsRootDescriptorTable(1, srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-		bundleCommandList->DrawInstanced(4, 1, 0, 0);
-		bundleCommandList->Close();
+		swapChain->Present(0, 0);
 	}
 	void ResetCommandList(ID3D12CommandAllocator * commandAllocator, ID3D12GraphicsCommandList * commandList, ID3D12PipelineState * pipeLineState)
 	{

@@ -275,7 +275,7 @@ static HRESULT LoadTextureDataFromFile( _In_z_ const wchar_t* fileName,
     return S_OK;
 }
 
-void DirectX::CreateTextureData(const std::string& fileName,std::vector<UINT8>* textureData)
+void DirectX::CreateTextureData(const std::string& fileName,std::vector<UINT8>* textureData,UINT* width,UINT* height)
 {
 	DDS_HEADER* header = nullptr;
 	uint8_t* bitData = nullptr;
@@ -293,4 +293,6 @@ void DirectX::CreateTextureData(const std::string& fileName,std::vector<UINT8>* 
 		textureData->emplace_back(bitData[0 + 4 * i]);
 		textureData->emplace_back(bitData[3 + 4 * i]);
 	}
+	*width = header->width;
+	*height = header->height;
 }

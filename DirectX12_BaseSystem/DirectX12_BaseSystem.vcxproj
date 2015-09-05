@@ -22,14 +22,19 @@
     <ClCompile Include="src\core\d3d.cpp" />
     <ClCompile Include="src\core\dxgi.cpp" />
     <ClCompile Include="src\object\DDSTextureLoader.cpp" />
+    <ClCompile Include="src\object\Sprite.cpp" />
+    <ClCompile Include="src\object\TextureContainer.cpp" />
     <ClCompile Include="src\Source.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\core\Config.h" />
     <ClInclude Include="src\core\d3d.h" />
     <ClInclude Include="src\core\dxgi.h" />
     <ClInclude Include="src\core\SafeEventHandle.h" />
     <ClInclude Include="src\core\Window.h" />
     <ClInclude Include="src\object\DDSTextureLoader.h" />
+    <ClInclude Include="src\object\Sprite.h" />
+    <ClInclude Include="src\object\TextureContainer.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="resource\DirectX12_BaseSystem.rc" />

@@ -23,8 +23,10 @@ namespace dxgi
 		DirectX::ThrowIfFailed(factory->EnumWarpAdapter(IID_PPV_ARGS(&adapter)));
 		return std::shared_ptr<IDXGIAdapter3>(adapter, ReleaseIUnknown);
 	}
-	std::shared_ptr<IDXGISwapChain3> CreateSwapChain( ID3D12Device * device, ID3D12CommandQueue * commandQueue, const HWND* hWnd, DXGI_SWAP_CHAIN_DESC* swapChainDesc)
+	std::shared_ptr<IDXGISwapChain3> CreateSwapChain(ID3D12CommandQueue * commandQueue, const HWND* hWnd, DXGI_SWAP_CHAIN_DESC* swapChainDesc)
 	{
+		ID3D12Device* device;
+		commandQueue->GetDevice(IID_PPV_ARGS(&device));
 		IDXGISwapChain* swapChain;
 		IDXGISwapChain3* swapChain3;
 
@@ -50,6 +52,7 @@ namespace dxgi
 			));
 		swapChain->QueryInterface(IID_PPV_ARGS(&swapChain3));
 		swapChain->Release();
+		device->Release();
 		return std::shared_ptr<IDXGISwapChain3>(swapChain3, ReleaseIUnknown);
 	}
 }

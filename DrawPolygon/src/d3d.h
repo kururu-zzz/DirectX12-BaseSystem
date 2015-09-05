@@ -71,10 +71,10 @@ namespace d3d
 
 	/**
 	*	@brief create D3D12_INPUT_LAYOUT_DESC and return it;
-	*   @param semantics : unorderd_map whose key is std::string,value is DXGI_FORMAT of vertex element;
+	*   @param semantics : vector of std::pair<std::string of semantics name,DXGI_FORMAT of vertex element>
 	*	@return D3D12_INPUT_LAYOUT_DESC;
 	*/
-	D3D12_INPUT_LAYOUT_DESC CreateInputLayout(const std::unordered_map<std::string, DXGI_FORMAT>& semantics);
+	D3D12_INPUT_LAYOUT_DESC CreateInputLayout(const std::vector<std::pair<std::string, DXGI_FORMAT>>& semantics);
 
 	/**
 	*	@brief create ID3D12PipelineState and return it;
@@ -134,7 +134,7 @@ namespace d3d
 	*	@param size : size of resource data
 	*	@return succeeded:return std::shared_ptr<ID3D12Resource>,failed:throw std::exception
 	*/
-	std::shared_ptr<ID3D12Resource> CreateResoruce(ID3D12Device* device, size_t size);
+	std::shared_ptr<ID3D12Resource> CreateResource(ID3D12Device* device, size_t size);
 
 	/**
 	*	@brief create D3D12_VERTEX_BUFFER_VIEW and return it;

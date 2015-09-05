@@ -65,9 +65,9 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 		{ { -0.45f, -0.5f, 0.0f },{ 0.0f, 0.0f, 1.0f, 1.0f } }
 	};
 
-	std::unordered_map<std::string, DXGI_FORMAT> semantics;
-	semantics.emplace("IN_POSITION", DXGI_FORMAT_R32G32B32_FLOAT);
-	semantics.emplace("IN_COLOR", DXGI_FORMAT_R32G32B32A32_FLOAT);
+	std::vector<std::pair<std::string, DXGI_FORMAT>> semantics;
+	semantics.emplace_back("IN_POSITION", DXGI_FORMAT_R32G32B32_FLOAT);
+	semantics.emplace_back("IN_COLOR", DXGI_FORMAT_R32G32B32A32_FLOAT);
 
 	auto layout = d3d::CreateInputLayout(semantics);
 
@@ -90,7 +90,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	auto commandList = d3d::CreateCommandList(device.get(), commandAllocator.get(), pipeLine.get());
 
-	auto vertexResource = d3d::CreateResoruce(device.get(), sizeof(triangleVerts)*sizeof(Vertex));
+	auto vertexResource = d3d::CreateResource(device.get(), sizeof(triangleVerts)*sizeof(Vertex));
 	auto vertexBufferView = d3d::CreateVetexBufferView(vertexResource.get(), triangleVerts, sizeof(Vertex), _countof(triangleVerts));
 
 	auto fence = d3d::CreateFence(device.get());
