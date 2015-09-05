@@ -1,5 +1,8 @@
 # DirectX12-BaseSystem
 
+9/5:Sprite,TextureContainerを実装完了
+コメント入れは保留
+
 8/27:DDSLoaderを用いて外部リソースを使用した描画に成功  
 アイコンをEXEに埋め込み
 
