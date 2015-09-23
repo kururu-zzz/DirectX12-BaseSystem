@@ -88,7 +88,7 @@ namespace d3d
 	*	@param domainBlob : ID3DBlob* for domainShader;
 	*	@return succeeded:return std::shared_ptr<ID3D12PipelineState>,failed:throw std::exception;
 	*/
-	std::shared_ptr<ID3D12PipelineState> CreatePipeLineState(
+	std::shared_ptr<ID3D12PipelineState> CreatePipelineState(
 		ID3D12Device * device,
 		const D3D12_INPUT_LAYOUT_DESC& layout,
 		ID3D12RootSignature* rootSignature,
@@ -152,7 +152,7 @@ namespace d3d
 	*	@param vertexNum : num of vertex
 	*	@return D3D12_VERTEX_BUFFER_VIEW
 	*/
-	D3D12_VERTEX_BUFFER_VIEW CreateVetexBufferView(ID3D12Resource* resource,void* data, size_t vertexSize,UINT vertexNum);
+	D3D12_VERTEX_BUFFER_VIEW CreateVertexBufferView(ID3D12Resource* resource,void* data, size_t vertexSize,UINT vertexNum);
 
 	/**
 	*	@brief create ConstantBufferView;
@@ -209,7 +209,7 @@ namespace d3d
 	*	@param commandAllocator : ID3D12CommandAllocator*;
 	*	@param commandList : ID3D12GraphicsCommandList*;
 	*	@param bundleCommandList : ID3D12GraphicsCommandList* of bundle;
-	*	@param pipeLineState : ID3D12PipeLineState*;
+	*	@param pipeLineState : ID3D12PipelineState*;
 	*	@param rootSignature : ID3D12RootSignature*;
 	*	@param renderTarget : head pointer of ID3D12Resource* for renderTarget;
 	*	@param rtvDescriptorHeap : ID3D12DescriptorHeap for renderTarget;
@@ -237,7 +237,7 @@ namespace d3d
 	*	@brief prepare bundle storing command;
 	*	@param bundleAllocator : ID3D12CommandAllocator* for bundle;
 	*	@param bundleCommandList : ID3D12GraphicsCommandList* of bundle;
-	*	@param pipeLineState : ID3D12PipeLineState*;
+	*	@param pipeLineState : ID3D12PipelineState*;
 	*	@param rootSignature : ID3D12RootSignature*;
 	*	@param cbvDescriptorHeap : ID3D12DescriptorHeap for constantBuffer;
 	*	@param vertexBuffer : D3D12_VERTEX_BUFFER_VIEW*;

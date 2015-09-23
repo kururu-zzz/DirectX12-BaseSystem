@@ -139,7 +139,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	auto renderTargets = d3d::CreateRenderTargets(device.get(),swapChain.get(),rtvDescriptorHeap.get());
 
-	auto pipeLine = d3d::CreatePipeLineState(
+	auto pipeLine = d3d::CreatePipelineState(
 		device.get(), 
 		layout,
 		rootSignature.get(), 
@@ -155,7 +155,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	d3d::UpdateSubresources(commandList.get(), textureResource.get(), textureHeapResource.get(), 0, 0, 1, &textureResourceData);
 
 	auto vertexResource = d3d::CreateResource(device.get(), sizeof(triangleVerts)*sizeof(Vertex));
-	auto vertexBufferView = d3d::CreateVetexBufferView(vertexResource.get(), triangleVerts, sizeof(Vertex), _countof(triangleVerts));
+	auto vertexBufferView = d3d::CreateVertexBufferView(vertexResource.get(), triangleVerts, sizeof(Vertex), _countof(triangleVerts));
 
 	ID3D12CommandList* ppCommandLists[] = { commandList.get() };
 	commandQueue->ExecuteCommandLists(1, ppCommandLists);

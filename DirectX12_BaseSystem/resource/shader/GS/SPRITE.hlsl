@@ -1,11 +1,6 @@
-struct cameraInfo
+cbuffer mtxViewport : register(b0)
 {
-	matrix  matViewPort;
-};
-
-cbuffer mtxCamera : register(b0)
-{
-	cameraInfo cam[1];
+	matrix mtxViewport;
 };
 
 /*cbuffer viewport : register(b4)
@@ -48,7 +43,7 @@ void RenderGS(triangle OutputVS In[3],                    // トライアングル リス
 			// もとの頂点を出力
 			for (i = 0; i < 3; i++)
 			{
-				Out.pos = mul(In[i].pos, cam[0].matViewPort);
+				Out.pos = mul(In[i].pos, mtxViewport);
 
 				Out.normal = float3(0.f, 0.f, 0.f);
 

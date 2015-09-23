@@ -5,23 +5,22 @@
 #include "core/SafeEventHandle.h"
 #include "object/TextureContainer.h"
 #include "object/Sprite.h"
+#include "sequence/Sequence.h"
 #include <ComUtil.h>
 #include <crtdbg.h>
 #include <vector>
-
 #include <DirectXMath.h>
 
-struct Vertex
-{
-	DirectX::XMFLOAT3 pos;
-	DirectX::XMFLOAT4 color;
-	DirectX::XMFLOAT3 normal;
-	DirectX::XMFLOAT2 uv;
-};
 
 struct mtxCamera
 {
-	DirectX::XMFLOAT4X4 mtxViewport;
+	DirectX::XMFLOAT4X4 mtxView;
+	DirectX::XMFLOAT4X4 mtxProjection;
+	mtxCamera()
+	{
+		DirectX::XMStoreFloat4x4(&mtxView,		 DirectX::XMMatrixIdentity());
+		DirectX::XMStoreFloat4x4(&mtxProjection, DirectX::XMMatrixIdentity());
+	}
 };
 
 // ウィンドウプロシージャ 
@@ -55,7 +54,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	auto wndWidth  = config::wndResolution.at(0).first;
 	auto wndHeight = config::wndResolution.at(0).second;
-	float wndAspect = static_cast<float>(wndWidth) / static_cast<float>(wndHeight);
+	auto wndAspect = static_cast<float>(wndWidth) / static_cast<float>(wndHeight);
 
 	auto hWnd = InitWindow(AppName, hInstance, WndProc, static_cast<int>(wndWidth), static_cast<int>(wndHeight));
 
@@ -80,15 +79,13 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	auto layout = d3d::CreateInputLayout(semantics);
 	
-	/*create rtv*/
 	auto rtvDescriptorHeap = d3d::CreateRTVDescriptorHeap();
 
-	/*create cbv*/
 	auto cbvDescriptorHeap = d3d::CreateCBVDescriptorHeap();
 
 	auto renderTargets = d3d::CreateRenderTargets(swapChain.get(), rtvDescriptorHeap.get());
 
-	auto pipeLineState = d3d::CreatePipeLineState(
+	auto pipelineState = d3d::CreatePipelineState(
 		layout,
 		rootSignature.get(),
 		vertexBlob.get(),
@@ -98,14 +95,24 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 		nullptr,
 		d3d::CreateRasterizerDesc(),
 		d3d::CreateBlendDesc(d3d::BlendMode::default));
-	auto commandList = d3d::CreateCommandList(commandAllocator.get(), pipeLineState.get());
-	auto bundleCommandList = d3d::CreateCommandList(bundleAllocator.get(), pipeLineState.get(), D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_BUNDLE);
+
+	auto commandList = d3d::CreateCommandList(commandAllocator.get(), pipelineState.get());
+	auto bundleCommandList = d3d::CreateCommandList(bundleAllocator.get(), pipelineState.get(), D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_BUNDLE);
 	DX12::InitTextureContainer(commandList);
 
-	UINT8* dataBegin;
-	mtxCamera cameraBuffer;
-	auto constantBufferResource = d3d::CreateResource(sizeof(mtxCamera));
-	d3d::CreateConstantBufferView(constantBufferResource.get(), &cameraBuffer, sizeof(mtxCamera), &dataBegin, cbvDescriptorHeap.get());
+	DirectX::XMFLOAT4X4 mtxViewport;
+	auto constantBufferResource = d3d::CreateResource(sizeof(DirectX::XMFLOAT4X4));
+
+	{
+		DirectX::XMStoreFloat4x4(&mtxViewport, DirectX::XMMatrixIdentity());
+		mtxViewport._11 = 2.f / wndWidth;
+		mtxViewport._22 = -2.0f / wndHeight;
+		mtxViewport._41 = -1.f;
+		mtxViewport._42 = 1.0f;
+		DirectX::XMStoreFloat4x4(&mtxViewport, DirectX::XMMatrixTranspose(DirectX::XMLoadFloat4x4(&mtxViewport)));
+	}
+
+	d3d::CreateConstantBufferView(constantBufferResource.get(), &mtxViewport, sizeof(DirectX::XMFLOAT4X4), cbvDescriptorHeap.get());
 
 	auto fence = d3d::CreateFence();
 
@@ -116,16 +123,6 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	auto viewport = d3d::CreateViewport(static_cast<float>(wndWidth),static_cast<float>(wndHeight));
 
 	auto rect = d3d::CreateRect(static_cast<LONG>(wndWidth), static_cast<LONG>(wndHeight));
-
-	{
-		DirectX::XMStoreFloat4x4(&cameraBuffer.mtxViewport, DirectX::XMMatrixIdentity());
-		cameraBuffer.mtxViewport._11 = 2.f / wndWidth;
-		cameraBuffer.mtxViewport._22 = -2.0f / wndHeight;
-		cameraBuffer.mtxViewport._41 = -1.f;
-		cameraBuffer.mtxViewport._42 = 1.0f;
-		DirectX::XMStoreFloat4x4(&cameraBuffer.mtxViewport, DirectX::XMMatrixTranspose(DirectX::XMLoadFloat4x4(&cameraBuffer.mtxViewport)));
-		memcpy(dataBegin, &cameraBuffer, sizeof(mtxCamera));
-	}
 
 	::ShowWindow(hWnd, SW_SHOW);
 	::UpdateWindow(hWnd);
@@ -144,10 +141,10 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 			{
 				transRenderTarget.emplace_back(renderTarget.get());
 			}
-			d3d::BeginRendering(
+			d3d::UpdateD3D(
 				commandAllocator.get(),
 				commandList.get(),
-				pipeLineState.get(),
+				pipelineState.get(),
 				rootSignature.get(),
 				rtvDescriptorHeap.get(),
 				transRenderTarget.data(),
@@ -156,32 +153,18 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 				frameIndex
 				);
 
-			DX12::Sprite sprite[12];
+			static SequenceManager sequenceManager;
 
-			for (int i = 0; i < 12; ++i)
-			{
-				sprite[i].Init(
-					DirectX::XMFLOAT3(i % 4 * 300.f, i / 4 * 300.f, 0.f),
-					DirectX::XMFLOAT2(300.f, 300.f),
-					DirectX::XMFLOAT4(0.f, 0.f, 1.f, 1.f),
-					"resource\\texture\\sample2.dds"
-					);
-			}
+			sequenceManager.Update();
 
-			sprite[5].ChangeImage("resource\\texture\\sample.dds");
-
-			d3d::ResetCommandList(bundleAllocator.get(), bundleCommandList.get(), pipeLineState.get());
+			d3d::ResetCommandList(bundleAllocator.get(), bundleCommandList.get(), pipelineState.get());
 			bundleCommandList->SetGraphicsRootSignature(rootSignature.get());
-			//SetGraphicsRootDescriptorTable call after SetDescriptorHeap 
 			{
 				auto tmp = cbvDescriptorHeap.get();
 				bundleCommandList->SetDescriptorHeaps(1, &tmp);
 				bundleCommandList->SetGraphicsRootDescriptorTable(0, cbvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 			}
-			for (int i = 0; i < 12; ++i)
-			{
-				sprite[i].Draw(bundleCommandList.get());
-			}
+			sequenceManager.Draw(bundleCommandList.get());
 
 			bundleCommandList->Close();
 
@@ -196,7 +179,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 				commandAllocator.get(),
 				commandList.get(),
 				commandQueue.get(),
-				pipeLineState.get(),
+				pipelineState.get(),
 				rootSignature.get(),
 				swapChain.get(),
 				transRenderTarget.data(),

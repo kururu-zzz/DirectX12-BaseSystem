@@ -82,7 +82,7 @@ namespace d3d
 	*	@param domainBlob : ID3DBlob* for domainShader;
 	*	@return succeeded:return std::shared_ptr<ID3D12PipelineState>,failed:throw std::exception;
 	*/
-	std::shared_ptr<ID3D12PipelineState> CreatePipeLineState(
+	std::shared_ptr<ID3D12PipelineState> CreatePipelineState(
 		const D3D12_INPUT_LAYOUT_DESC& layout,
 		ID3D12RootSignature* rootSignature,
 		ID3DBlob* vertexBlob,
@@ -168,7 +168,17 @@ namespace d3d
 	*	@param vertexNum : num of vertex
 	*	@return D3D12_VERTEX_BUFFER_VIEW
 	*/
-	D3D12_VERTEX_BUFFER_VIEW CreateVetexBufferView(ID3D12Resource* resource, void* data, size_t vertexSize, UINT vertexNum);
+	D3D12_VERTEX_BUFFER_VIEW CreateVertexBufferView(ID3D12Resource* resource, void* data, size_t vertexSize, UINT vertexNum);
+
+	/**
+	*	@brief create D3D12_INDEX_BUFFER_VIEW and return it;
+	*	@param resource : ID3D12Resource*
+	*	@param data : vertex data
+	*	@param indexSize : size of index
+	*	@param vertexNum : num of vertex
+	*	@return D3D12_INDEX_BUFFER_VIEW
+	*/
+	D3D12_INDEX_BUFFER_VIEW CreateIndexBufferView(ID3D12Resource* resource, void* data, size_t vertexSize, UINT vertexNum);
 
 	/**
 	*	@brief create ConstantBufferView;
@@ -179,7 +189,7 @@ namespace d3d
 	*	@param dataBegin : begining of constantBuffer data;
 	*	@param cbvDescriptorHeap : ID3D12DescriptorHeap;
 	*/
-	void CreateConstantBufferView(ID3D12Resource* resource, void* data, size_t constantBufferSize, UINT8** dataBegin, ID3D12DescriptorHeap* cbvDescriptorHeap);
+	void CreateConstantBufferView(ID3D12Resource* resource, void* data, size_t constantBufferSize, ID3D12DescriptorHeap* cbvDescriptorHeap);
 
 	/**
 	*	@brief create ShaderResourceView;
@@ -232,7 +242,7 @@ namespace d3d
 	*/
 	D3D12_RECT CreateRect(LONG width, LONG height);
 
-	void BeginRendering(
+	void UpdateD3D(
 		ID3D12CommandAllocator* commandAllocator,
 		ID3D12GraphicsCommandList* commandList,
 		ID3D12PipelineState* pipeLineState,
@@ -272,7 +282,7 @@ namespace d3d
 	*	@brief reset commandList if closed;
 	*	@param commandAllocator : ID3D12CommandAllocator*;
 	*	@param commandList : ID3D12GraphicsCommandList*;
-	*	@param pipeLineState : ID3D12PipeLineState*;
+	*	@param pipeLineState : ID3D12PipelineState*;
 	*/
 	void ResetCommandList(ID3D12CommandAllocator* commandAllocator,ID3D12GraphicsCommandList* commandList, ID3D12PipelineState* pipeLineState);
 }

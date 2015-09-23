@@ -16,51 +16,129 @@
     <Filter Include="リソース ファイル\icon">
       <UniqueIdentifier>{d56e6494-9d37-485b-8e28-a98cc35e655b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="ソース ファイル\core">
+      <UniqueIdentifier>{53c92aca-bfb8-4ccb-81a9-2ba36d9948ce}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\core">
+      <UniqueIdentifier>{fc8f9651-a226-4bf8-85bf-b9423d84bf52}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\object">
+      <UniqueIdentifier>{92773286-a425-498e-9508-8de4acd4189f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\object">
+      <UniqueIdentifier>{8ebdb8a4-da3c-4910-a82e-17e1f338115d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\sequence">
+      <UniqueIdentifier>{66d972f2-bf23-449c-95d5-b42467760986}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\sequence">
+      <UniqueIdentifier>{2d6136d2-d99d-4500-b762-c56292d1d57f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ヘッダー ファイル\object\fbx">
+      <UniqueIdentifier>{acffe5a7-91f4-4362-9a1f-182669cbf168}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ソース ファイル\object\fbx">
+      <UniqueIdentifier>{c5f7ee50-3c1b-459b-a894-74f8fa1dff08}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\core\d3d.cpp">
+      <Filter>ソース ファイル\core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\dxgi.cpp">
+      <Filter>ソース ファイル\core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\object\DDSTextureLoader.cpp">
+      <Filter>ソース ファイル\object</Filter>
+    </ClCompile>
+    <ClCompile Include="src\object\Sprite.cpp">
+      <Filter>ソース ファイル\object</Filter>
+    </ClCompile>
+    <ClCompile Include="src\object\TextureContainer.cpp">
+      <Filter>ソース ファイル\object</Filter>
+    </ClCompile>
     <ClCompile Include="src\Source.cpp">
       <Filter>ソース ファイル</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\dxgi.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="src\object\Camera.cpp">
+      <Filter>ソース ファイル\object</Filter>
     </ClCompile>
-    <ClCompile Include="src\core\d3d.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="src\sequence\SequenceManager.cpp">
+      <Filter>ソース ファイル\sequence</Filter>
     </ClCompile>
-    <ClCompile Include="src\object\DDSTextureLoader.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="src\sequence\Title.cpp">
+      <Filter>ソース ファイル\sequence</Filter>
     </ClCompile>
-    <ClCompile Include="src\object\Sprite.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="src\object\fbx\Material.cpp">
+      <Filter>ソース ファイル\object\fbx</Filter>
     </ClCompile>
-    <ClCompile Include="src\object\TextureContainer.cpp">
-      <Filter>ソース ファイル</Filter>
+    <ClCompile Include="src\object\fbx\Mesh.cpp">
+      <Filter>ソース ファイル\object\fbx</Filter>
+    </ClCompile>
+    <ClCompile Include="src\object\fbx\Model.cpp">
+      <Filter>ソース ファイル\object\fbx</Filter>
+    </ClCompile>
+    <ClCompile Include="src\object\fbx\fbxLoader.cpp">
+      <Filter>ソース ファイル\object\fbx</Filter>
+    </ClCompile>
+    <ClCompile Include="src\object\fbx\Vertex.cpp">
+      <Filter>ソース ファイル\object\fbx</Filter>
+    </ClCompile>
+    <ClCompile Include="src\object\fbx\WorldMatrix.cpp">
+      <Filter>ソース ファイル\object\fbx</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\core\Window.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="src\core\SafeEventHandle.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
-    <ClInclude Include="src\core\dxgi.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="src\core\Config.h">
+      <Filter>ヘッダー ファイル\core</Filter>
     </ClInclude>
     <ClInclude Include="src\core\d3d.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>ヘッダー ファイル\core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\dxgi.h">
+      <Filter>ヘッダー ファイル\core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\SafeEventHandle.h">
+      <Filter>ヘッダー ファイル\core</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\Window.h">
+      <Filter>ヘッダー ファイル\core</Filter>
     </ClInclude>
     <ClInclude Include="src\object\DDSTextureLoader.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>ヘッダー ファイル\object</Filter>
     </ClInclude>
     <ClInclude Include="src\object\Sprite.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>ヘッダー ファイル\object</Filter>
     </ClInclude>
     <ClInclude Include="src\object\TextureContainer.h">
-      <Filter>ヘッダー ファイル</Filter>
+      <Filter>ヘッダー ファイル\object</Filter>
     </ClInclude>
-    <ClInclude Include="src\core\Config.h">
-      <Filter>ヘッダー ファイル</Filter>
+    <ClInclude Include="src\object\Camera.h">
+      <Filter>ヘッダー ファイル\object</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sequence\Sequence.h">
+      <Filter>ヘッダー ファイル\sequence</Filter>
+    </ClInclude>
+    <ClInclude Include="src\sequence\Title.h">
+      <Filter>ヘッダー ファイル\sequence</Filter>
+    </ClInclude>
+    <ClInclude Include="src\object\fbx\Material.h">
+      <Filter>ヘッダー ファイル\object\fbx</Filter>
+    </ClInclude>
+    <ClInclude Include="src\object\fbx\Mesh.h">
+      <Filter>ヘッダー ファイル\object\fbx</Filter>
+    </ClInclude>
+    <ClInclude Include="src\object\fbx\Model.h">
+      <Filter>ヘッダー ファイル\object\fbx</Filter>
+    </ClInclude>
+    <ClInclude Include="src\object\fbx\fbxLoader.h">
+      <Filter>ヘッダー ファイル\object\fbx</Filter>
+    </ClInclude>
+    <ClInclude Include="src\object\fbx\Vertex.h">
+      <Filter>ヘッダー ファイル\object\fbx</Filter>
+    </ClInclude>
+    <ClInclude Include="src\object\fbx\WorldMatrix.h">
+      <Filter>ヘッダー ファイル\object\fbx</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

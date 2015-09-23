@@ -86,7 +86,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	auto renderTargets = d3d::CreateRenderTargets(device.get(), swapChain.get(), rtvDescriptorHeap.get());
 
-	auto pipeLine = d3d::CreatePipeLineState(
+	auto pipeLine = d3d::CreatePipelineState(
 		device.get(), 
 		layout,
 		rootSignature.get(), 
@@ -101,7 +101,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	auto bundleCommandList = d3d::CreateCommandList(device.get(), bundleAllocator.get(), pipeLine.get(), D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_BUNDLE);
 
 	auto vertexResource = d3d::CreateResource(device.get(), sizeof(triangleVerts)*sizeof(Vertex));
-	auto vertexBufferView = d3d::CreateVetexBufferView(vertexResource.get(), triangleVerts, sizeof(Vertex), _countof(triangleVerts));
+	auto vertexBufferView = d3d::CreateVertexBufferView(vertexResource.get(), triangleVerts, sizeof(Vertex), _countof(triangleVerts));
 
 	UINT8* dataBegin;
 	ConstantBuffer cBuffer;

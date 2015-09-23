@@ -117,31 +117,47 @@ namespace d3d
 		D3D12_ROOT_SIGNATURE_DESC defaultDesc = {};
 		if (!rootDesc)
 		{
-			D3D12_DESCRIPTOR_RANGE ranges[2];
-			D3D12_ROOT_PARAMETER rootParameters[2];
+			std::vector<D3D12_DESCRIPTOR_RANGE> ranges;
+			std::vector<D3D12_ROOT_PARAMETER> rootParameters;
 
-			ranges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-			ranges[0].NumDescriptors = 1;
-			ranges[0].BaseShaderRegister = 0;
-			ranges[0].RegisterSpace = 0;
-			ranges[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+			///!óvèCê≥
+			for (int i = 0; i < 5; ++i)
+			{
+				D3D12_DESCRIPTOR_RANGE range;
+				range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+				range.NumDescriptors = 1;
+				range.BaseShaderRegister = i;
+				range.RegisterSpace = 0;
+				range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-			rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-			rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_GEOMETRY;
-			rootParameters[0].DescriptorTable.NumDescriptorRanges = 1;
-			rootParameters[0].DescriptorTable.pDescriptorRanges = &ranges[0];
+				ranges.emplace_back(range);
 
-			ranges[1].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-			ranges[1].NumDescriptors = 1;
-			ranges[1].BaseShaderRegister = 0;
-			ranges[1].RegisterSpace = 0;
-			ranges[1].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+				D3D12_ROOT_PARAMETER rootParameter;
+				rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+				rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+				rootParameter.DescriptorTable.NumDescriptorRanges = 1;
+				rootParameter.DescriptorTable.pDescriptorRanges = &ranges[i];
 
-			rootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-			rootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-			rootParameters[1].DescriptorTable.NumDescriptorRanges = 1;
-			rootParameters[1].DescriptorTable.pDescriptorRanges = &ranges[1];
+				rootParameters.emplace_back(rootParameter);
+			}
+			{
+				D3D12_DESCRIPTOR_RANGE range;
+				range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+				range.NumDescriptors = 1;
+				range.BaseShaderRegister = 0;
+				range.RegisterSpace = 0;
+				range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
+				ranges.emplace_back(range);
+
+				D3D12_ROOT_PARAMETER rootParameter;
+				rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+				rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+				rootParameter.DescriptorTable.NumDescriptorRanges = 1;
+				rootParameter.DescriptorTable.pDescriptorRanges = &ranges[rootParameters.size()];
+
+				rootParameters.emplace_back(rootParameter);
+			}
 			D3D12_STATIC_SAMPLER_DESC sampler = {};
 			sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
 			sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
@@ -157,7 +173,7 @@ namespace d3d
 			sampler.RegisterSpace = 0;
 			sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-			defaultDesc.NumParameters = 2;
+			defaultDesc.NumParameters = ranges.size();
 			defaultDesc.pParameters = &rootParameters[0];
 			defaultDesc.NumStaticSamplers = 1;
 			defaultDesc.pStaticSamplers = &sampler;
@@ -251,7 +267,7 @@ namespace d3d
 		return inputLayout;
 	}
 
-	std::shared_ptr<ID3D12PipelineState> CreatePipeLineState(
+	std::shared_ptr<ID3D12PipelineState> CreatePipelineState(
 		const D3D12_INPUT_LAYOUT_DESC& layout,
 		ID3D12RootSignature* rootSignature,
 		ID3DBlob* vertexBlob,
@@ -453,7 +469,7 @@ namespace d3d
 		return std::shared_ptr<ID3D12Resource>(resource, ReleaseIUnknown);
 	}
 
-	D3D12_VERTEX_BUFFER_VIEW CreateVetexBufferView(ID3D12Resource * resource, void* data, size_t vertexSize, UINT vertexNum)
+	D3D12_VERTEX_BUFFER_VIEW CreateVertexBufferView(ID3D12Resource * resource, void* data, size_t vertexSize, UINT vertexNum)
 	{
 		D3D12_VERTEX_BUFFER_VIEW vertexBufferView;
 
@@ -469,11 +485,29 @@ namespace d3d
 		return vertexBufferView;
 	}
 
-	void CreateConstantBufferView(ID3D12Resource * resource, void * data, size_t constantBufferSize, UINT8** dataBegin, ID3D12DescriptorHeap* cbvDescriptorHeap)
+	D3D12_INDEX_BUFFER_VIEW CreateIndexBufferView(ID3D12Resource* resource, void* data, size_t indexSize, UINT vertexNum)
+	{
+		D3D12_INDEX_BUFFER_VIEW indexBufferView;
+
+		UINT8* dataBegin;
+		resource->Map(0, nullptr, reinterpret_cast<void**>(&dataBegin));
+		memcpy(dataBegin, data, indexSize*vertexNum);
+		resource->Unmap(0, nullptr);
+
+		indexBufferView.Format = DXGI_FORMAT_R32_UINT;
+		indexBufferView.BufferLocation = resource->GetGPUVirtualAddress();
+		indexBufferView.SizeInBytes = indexSize*vertexNum;
+
+		return indexBufferView;
+	}
+
+	void CreateConstantBufferView(ID3D12Resource * resource, void * data, size_t constantBufferSize,ID3D12DescriptorHeap* cbvDescriptorHeap)
 	{
 		CheckExistDevice();
 		// Describe and create a constant buffer view.
 		// cf.MicroSoft Sample Source
+
+		UINT8* dataBegin;
 
 		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
 		cbvDesc.BufferLocation = resource->GetGPUVirtualAddress();
@@ -482,10 +516,9 @@ namespace d3d
 		cbvDesc.SizeInBytes = (constantBufferSize + 255) & ~255;
 		device->CreateConstantBufferView(&cbvDesc, cbvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
-		ZeroMemory(data, constantBufferSize);
 		DirectX::ThrowIfFailed(
-			resource->Map(0, nullptr, reinterpret_cast<void**>(dataBegin)));
-		memcpy(*dataBegin, data, constantBufferSize);
+			resource->Map(0, nullptr, reinterpret_cast<void**>(&dataBegin)));
+		memcpy(dataBegin, data, constantBufferSize);
 		resource->Unmap(0, nullptr);
 
 	}
@@ -686,7 +719,7 @@ namespace d3d
 		*frameIndex = swapChain->GetCurrentBackBufferIndex();
 	}
 
-	void BeginRendering(
+	void UpdateD3D(
 		ID3D12CommandAllocator* commandAllocator,
 		ID3D12GraphicsCommandList* commandList,
 		ID3D12PipelineState* pipeLineState,

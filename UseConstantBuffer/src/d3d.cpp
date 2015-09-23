@@ -213,7 +213,7 @@ namespace d3d
 		return inputLayout;
 	}
 
-	std::shared_ptr<ID3D12PipelineState> CreatePipeLineState(
+	std::shared_ptr<ID3D12PipelineState> CreatePipelineState(
 		ID3D12Device * device, 
 		const D3D12_INPUT_LAYOUT_DESC& layout,
 		ID3D12RootSignature* rootSignature,
@@ -350,7 +350,7 @@ namespace d3d
 				));
 		return std::shared_ptr<ID3D12Resource>(resource, ReleaseIUnknown);
 	}
-	D3D12_VERTEX_BUFFER_VIEW CreateVetexBufferView(ID3D12Resource * resource,void* data, size_t vertexSize, UINT vertexNum)
+	D3D12_VERTEX_BUFFER_VIEW CreateVertexBufferView(ID3D12Resource * resource,void* data, size_t vertexSize, UINT vertexNum)
 	{
 		D3D12_VERTEX_BUFFER_VIEW vertexBufferView;
 
