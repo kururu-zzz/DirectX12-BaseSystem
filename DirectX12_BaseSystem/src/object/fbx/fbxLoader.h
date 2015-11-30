@@ -9,7 +9,7 @@ namespace fbx
 {
 	namespace resource
 	{
-		std::shared_ptr<FbxScene> LoadModel(const std::string& fileName);
+		FbxScene* LoadModel(const std::string& fileName);
 	}
 };
 

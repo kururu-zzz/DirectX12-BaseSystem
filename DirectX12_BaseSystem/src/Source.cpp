@@ -3,6 +3,7 @@
 #include "core/dxgi.h"
 #include "core/Config.h"
 #include "core/SafeEventHandle.h"
+#include "core/ConstantBufferManager.h"
 #include "object/TextureContainer.h"
 #include "object/Sprite.h"
 #include "sequence/Sequence.h"
@@ -10,18 +11,6 @@
 #include <crtdbg.h>
 #include <vector>
 #include <DirectXMath.h>
-
-
-struct mtxCamera
-{
-	DirectX::XMFLOAT4X4 mtxView;
-	DirectX::XMFLOAT4X4 mtxProjection;
-	mtxCamera()
-	{
-		DirectX::XMStoreFloat4x4(&mtxView,		 DirectX::XMMatrixIdentity());
-		DirectX::XMStoreFloat4x4(&mtxProjection, DirectX::XMMatrixIdentity());
-	}
-};
 
 // ウィンドウプロシージャ 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -58,6 +47,8 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	auto hWnd = InitWindow(AppName, hInstance, WndProc, static_cast<int>(wndWidth), static_cast<int>(wndHeight));
 
+	d3d::CreateDevice();
+
 	auto commandQueue = d3d::CreateCommandQueue();
 	auto swapChain = dxgi::CreateSwapChain(commandQueue.get(), &hWnd);
 
@@ -65,9 +56,6 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	auto commandAllocator = d3d::CreateCommandAllocator();
 	auto bundleAllocator = d3d::CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_BUNDLE);
-	auto vertexBlob = d3d::CreateBlob("resource/shader/VS/Sprite.hlsl", "RenderVS", "vs_5_0");
-	auto geometryBlob = d3d::CreateBlob("resource/shader/GS/Sprite.hlsl", "RenderGS", "gs_5_0");
-	auto pixelBlob = d3d::CreateBlob("resource/shader/PS/Sprite.hlsl", "RenderPS", "ps_5_0");
 
 	auto rootSignature = d3d::CreateRootSignature();
 
@@ -77,42 +65,44 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	semantics.emplace_back("IN_NORMAL", DXGI_FORMAT_R32G32B32_FLOAT);
 	semantics.emplace_back("IN_UV", DXGI_FORMAT_R32G32_FLOAT);
 
-	auto layout = d3d::CreateInputLayout(semantics);
-	
-	auto rtvDescriptorHeap = d3d::CreateRTVDescriptorHeap();
-
-	auto cbvDescriptorHeap = d3d::CreateCBVDescriptorHeap();
-
-	auto renderTargets = d3d::CreateRenderTargets(swapChain.get(), rtvDescriptorHeap.get());
-
-	auto pipelineState = d3d::CreatePipelineState(
-		layout,
+	/*auto spritePipelineState = d3d::CreatePipelineState(
+		d3d::CreateInputLayout(semantics),
 		rootSignature.get(),
-		vertexBlob.get(),
-		geometryBlob.get(),
-		pixelBlob.get(),
+		d3d::CreateBlob("resource/shader/VS/Sprite.hlsl", "RenderVS", "vs_5_0").get(),
+		d3d::CreateBlob("resource/shader/GS/Sprite.hlsl", "RenderGS", "gs_5_0").get(),
+		d3d::CreateBlob("resource/shader/PS/Sprite.hlsl", "RenderPS", "ps_5_0").get(),
+		nullptr,
+		nullptr,
+		d3d::CreateRasterizerDesc(),
+		d3d::CreateBlendDesc(d3d::BlendMode::default));*/
+
+	//semantics.emplace_back("IN_BONEINDEX", DXGI_FORMAT_R32G32B32A32_UINT);
+	//semantics.emplace_back("IN_BONEWEIGHT", DXGI_FORMAT_R32G32B32A32_FLOAT);
+
+	auto modelPipelineState = d3d::CreatePipelineState(
+		d3d::CreateInputLayout(semantics),
+		rootSignature.get(),
+		d3d::CreateBlob("resource/shader/VS/Model.hlsl", "RenderVS", "vs_5_0").get(),
+		d3d::CreateBlob("resource/shader/GS/Model.hlsl", "RenderGS", "gs_5_0").get(),
+		d3d::CreateBlob("resource/shader/PS/Model.hlsl", "RenderPS", "ps_5_0").get(),
 		nullptr,
 		nullptr,
 		d3d::CreateRasterizerDesc(),
 		d3d::CreateBlendDesc(d3d::BlendMode::default));
 
-	auto commandList = d3d::CreateCommandList(commandAllocator.get(), pipelineState.get());
-	auto bundleCommandList = d3d::CreateCommandList(bundleAllocator.get(), pipelineState.get(), D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_BUNDLE);
+	auto rtvDescriptorHeap = d3d::CreateRTVDescriptorHeap();
+
+	auto renderTargets = d3d::CreateRenderTargets(swapChain.get(), rtvDescriptorHeap.get());
+
+	auto dsvDescriptorHeap = d3d::CreateDSVDescriptorHeap();
+
+	auto dsvResource = d3d::CreateDepthStencilResoruce(wndWidth,wndHeight);
+
+	d3d::CreateDepthStencilView(dsvResource.get(), dsvDescriptorHeap.get());
+
+	auto commandList = d3d::CreateCommandList(commandAllocator.get(), modelPipelineState.get());
+	auto bundleCommandList = d3d::CreateCommandList(bundleAllocator.get(), modelPipelineState.get(), D3D12_COMMAND_LIST_TYPE::D3D12_COMMAND_LIST_TYPE_BUNDLE);
 	DX12::InitTextureContainer(commandList);
-
-	DirectX::XMFLOAT4X4 mtxViewport;
-	auto constantBufferResource = d3d::CreateResource(sizeof(DirectX::XMFLOAT4X4));
-
-	{
-		DirectX::XMStoreFloat4x4(&mtxViewport, DirectX::XMMatrixIdentity());
-		mtxViewport._11 = 2.f / wndWidth;
-		mtxViewport._22 = -2.0f / wndHeight;
-		mtxViewport._41 = -1.f;
-		mtxViewport._42 = 1.0f;
-		DirectX::XMStoreFloat4x4(&mtxViewport, DirectX::XMMatrixTranspose(DirectX::XMLoadFloat4x4(&mtxViewport)));
-	}
-
-	d3d::CreateConstantBufferView(constantBufferResource.get(), &mtxViewport, sizeof(DirectX::XMFLOAT4X4), cbvDescriptorHeap.get());
 
 	auto fence = d3d::CreateFence();
 
@@ -135,56 +125,38 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 			::DispatchMessage(&msg);
 		}
 		else {
-
-			std::vector<ID3D12Resource*> transRenderTarget;
-			for (auto& renderTarget : renderTargets)
-			{
-				transRenderTarget.emplace_back(renderTarget.get());
-			}
 			d3d::UpdateD3D(
 				commandAllocator.get(),
 				commandList.get(),
-				pipelineState.get(),
+				modelPipelineState.get(),
 				rootSignature.get(),
 				rtvDescriptorHeap.get(),
-				transRenderTarget.data(),
+				renderTargets.at(frameIndex).get(),
+				dsvDescriptorHeap.get(),
 				viewport,
 				rect,
-				frameIndex
-				);
+				frameIndex);
 
 			static SequenceManager sequenceManager;
 
 			sequenceManager.Update();
 
-			d3d::ResetCommandList(bundleAllocator.get(), bundleCommandList.get(), pipelineState.get());
-			bundleCommandList->SetGraphicsRootSignature(rootSignature.get());
-			{
-				auto tmp = cbvDescriptorHeap.get();
-				bundleCommandList->SetDescriptorHeaps(1, &tmp);
-				bundleCommandList->SetGraphicsRootDescriptorTable(0, cbvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-			}
-			sequenceManager.Draw(bundleCommandList.get());
+			/*DirectX::XMFLOAT4X4 mtxViewport;
+			DirectX::XMStoreFloat4x4(&mtxViewport, DirectX::XMMatrixIdentity());
+			mtxViewport._11 = 2.f / 1200.f;
+			mtxViewport._22 = -2.0f / 900.f;
+			mtxViewport._41 = -1.f;
+			mtxViewport._42 = 1.0f;
+			DirectX::XMStoreFloat4x4(&mtxViewport, DirectX::XMMatrixTranspose(DirectX::XMLoadFloat4x4(&mtxViewport)));
+			DX12::ConstantBuffer::SetBuffer(commandList.get(), mtxViewport, DX12::ConstantBuffer::BufferSlot::Camera);*/
 
-			bundleCommandList->Close();
-
-			auto cbv = cbvDescriptorHeap.get();
-			commandList->SetDescriptorHeaps(1, &cbv);
-			auto srv = DX12::GetLastUseSRV();
-			commandList->SetDescriptorHeaps(1, &srv);
-
-			commandList->ExecuteBundle(bundleCommandList.get());
+			sequenceManager.Draw(commandList.get());
 
 			d3d::EndRendering(
-				commandAllocator.get(),
 				commandList.get(),
 				commandQueue.get(),
-				pipelineState.get(),
-				rootSignature.get(),
 				swapChain.get(),
-				transRenderTarget.data(),
-				frameIndex
-				);
+				renderTargets.at(frameIndex).get());
 
 			d3d::WaitForPreviousFrame(
 				swapChain.get(),
@@ -201,5 +173,5 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	::UnregisterClass(AppName, hInstance);
 
-	return msg.wParam;
+	return static_cast<int>(msg.wParam);
 }

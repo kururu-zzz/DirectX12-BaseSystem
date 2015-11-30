@@ -2,6 +2,7 @@
 #define WORLDMATRIX___
 
 #include <vector>
+#include <memory>
 #include <DirectXMath.h>
 
 struct ID3D12GraphicsCommandList;
@@ -10,7 +11,8 @@ namespace DX12
 {
 	class WorldMatrix{
 	private:
-		DirectX::XMFLOAT4X4 mtxWorld;
+		struct WorldBuffer;
+		std::shared_ptr<WorldBuffer> world;
 		DirectX::XMFLOAT3 scale, translate;
 		DirectX::XMFLOAT4X4 rotate;
 	public:

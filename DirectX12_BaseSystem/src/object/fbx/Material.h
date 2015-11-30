@@ -1,5 +1,5 @@
-#ifndef __MATERIAL__
-#define __MATERIAL__
+#ifndef MATERIAL___
+#define MATERIAL___
 
 #include <fbxsdk.h>
 #include <string>

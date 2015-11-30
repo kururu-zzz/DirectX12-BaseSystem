@@ -19,6 +19,11 @@ struct ConstantBuffer
 	DirectX::XMFLOAT4 offset;
 };
 
+struct ConstantBuffer2
+{
+	DirectX::XMFLOAT4 offset;
+};
+
 // ウィンドウプロシージャ 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 	switch (msg) {
@@ -105,8 +110,12 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	UINT8* dataBegin;
 	ConstantBuffer cBuffer;
-	auto constantBufferResource = d3d::CreateResource(device.get(), 1024 * 64);
-	d3d::CreateConstantBufferView(device.get(),constantBufferResource.get(),&cBuffer,sizeof(ConstantBuffer),&dataBegin,cbvDescriptorHeap.get());
+	auto constantBufferResource = d3d::CreateResource(device.get(), sizeof(ConstantBuffer));
+	d3d::CreateConstantBufferView(device.get(),constantBufferResource.get(),&cBuffer,sizeof(ConstantBuffer),&dataBegin,cbvDescriptorHeap.get(),0);
+	UINT8* dataBegin2;
+	ConstantBuffer cBuffer2;
+	auto constantBufferResource2 = d3d::CreateResource(device.get(), sizeof(ConstantBuffer2));
+	d3d::CreateConstantBufferView(device.get(), constantBufferResource2.get(), &cBuffer2, sizeof(ConstantBuffer2), &dataBegin2, cbvDescriptorHeap.get(), 1);
 
 	d3d::PrepareBundle(bundleAllocator.get(),bundleCommandList.get(),pipeLine.get(), rootSignature.get(), cbvDescriptorHeap.get(), &vertexBufferView);
 
@@ -137,11 +146,17 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 				const float offsetBounds = 1.25f;
 
 				cBuffer.offset.x += translationSpeed;
+				cBuffer2.offset.y += translationSpeed;
 				if (cBuffer.offset.x > offsetBounds)
 				{
 					cBuffer.offset.x = -offsetBounds;
 				}
+				if (cBuffer.offset.y > offsetBounds)
+				{
+					cBuffer.offset.y = -offsetBounds;
+				}
 				memcpy(dataBegin, &cBuffer, sizeof(ConstantBuffer));
+				memcpy(dataBegin2, &cBuffer2, sizeof(ConstantBuffer2));
 			}
 
 			std::vector<ID3D12Resource*> transRenderTarget;

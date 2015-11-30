@@ -261,7 +261,9 @@ namespace fbx
 		void CreateVertex(
 			const FbxMesh* fbxmesh,
 			D3D12_VERTEX_BUFFER_VIEW* vertexBufferView,
-			D3D12_INDEX_BUFFER_VIEW* indexBufferView
+			D3D12_INDEX_BUFFER_VIEW* indexBufferView,
+			std::shared_ptr<ID3D12Resource>* vertexResource,
+			std::shared_ptr<ID3D12Resource>* indexResource
 			)
 		{
 			std::vector<int> indexList;
@@ -287,11 +289,11 @@ namespace fbx
 				Vertex vertex;
 				vertex.pos = positionList[i];
 				vertex.normal = normalList[i];
-				vertex.color = 0xffffffff;
+				vertex.color = DirectX::XMFLOAT4(1.f,1.f,1.f,1.f);
 				vertex.texel = (uv0List.size() == 0) ?	DirectX::XMFLOAT2(0.0f, 0.0f) :
 														DirectX::XMFLOAT2(uv0List[i].x, -uv0List[i].y);
 
-				if (boneWeightList.size() > 0) {
+				/*if (boneWeightList.size() > 0) {
 					for (int j = 0; j < 4; ++j)
 						vertex.boneIndex[j] = boneWeightList[i].boneIndex[j];
 					vertex.boneWeight = boneWeightList[i].boneWeight;
@@ -301,7 +303,7 @@ namespace fbx
 					for (int j = 0; j < 4; ++j)
 						vertex.boneIndex[j] = 0;
 					vertex.boneWeight = DirectX::XMFLOAT4(0, 0, 0, 0);
-				}
+				}*/
 
 				vertexList.emplace_back(vertex);
 			}
@@ -323,10 +325,10 @@ namespace fbx
 					modelIndexList.emplace_back(exist[vertex]);
 				}
 			}
-			auto vertexResource = d3d::CreateResource(sizeof(modelVertexList.data()));
-			*vertexBufferView = d3d::CreateVertexBufferView(vertexResource.get(), modelVertexList.data(), sizeof(Vertex), modelVertexList.size());
-			auto indexResource = d3d::CreateResource(sizeof(modelIndexList.data()));
-			*indexBufferView = d3d::CreateIndexBufferView(indexResource.get(), modelIndexList.data() , sizeof(uint32_t), modelIndexList.size());
+			*vertexResource = d3d::CreateResource(sizeof(Vertex)*modelVertexList.size());
+			*vertexBufferView = d3d::CreateVertexBufferView(vertexResource->get(), modelVertexList.data(), sizeof(Vertex), modelVertexList.size());
+			*indexResource = d3d::CreateResource(sizeof(uint32_t)*modelIndexList.size());
+			*indexBufferView = d3d::CreateIndexBufferView(indexResource->get(), modelIndexList.data() , sizeof(uint32_t), modelIndexList.size());
 		}
 	}
 }

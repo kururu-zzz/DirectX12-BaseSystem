@@ -1,9 +1,20 @@
 #include "WorldMatrix.h"
+#include "../../core/ConstantBufferManager.h"
 #include "../../core/d3d.h"
 
 namespace DX12
 {
+	struct WorldMatrix::WorldBuffer
+	{
+		DirectX::XMFLOAT4X4 mtxWorld;
+		WorldBuffer()
+		{
+			XMStoreFloat4x4(&mtxWorld, DirectX::XMMatrixIdentity());
+		}
+	};
+
 	WorldMatrix::WorldMatrix(){
+		world = std::make_shared<WorldBuffer>();
 		scale = DirectX::XMFLOAT3(1.f,1.f,1.f);
 		translate = DirectX::XMFLOAT3(0.f, 0.f, 0.f);
 		XMStoreFloat4x4(&rotate, DirectX::XMMatrixIdentity());
@@ -34,7 +45,7 @@ namespace DX12
 		auto mtxTranslate = DirectX::XMMatrixTranslation(translate.x, translate.y, translate.z);
 		auto mtxScale = DirectX::XMMatrixScaling(scale.x, scale.y, scale.z);
 		auto mtxRotate = DirectX::XMLoadFloat4x4(&rotate);
-		DirectX::XMStoreFloat4x4(&mtxWorld, DirectX::XMMatrixTranspose(mtxScale*mtxRotate*mtxTranslate));
-		
+		DirectX::XMStoreFloat4x4(&world->mtxWorld, DirectX::XMMatrixTranspose(mtxScale*mtxRotate*mtxTranslate));
+		DX12::ConstantBuffer::SetBuffer(commandList, world->mtxWorld, DX12::ConstantBuffer::BufferSlot::World);
 	}
 }

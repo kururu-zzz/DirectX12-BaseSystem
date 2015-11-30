@@ -40,7 +40,12 @@ public:
 	{
 		//ƒNƒ‰ƒX–¼‚Ì" *"‚ðÁ‹Ž‚µ‚Ä“o˜^
 		this->sequenceName = sequenceName;
-		for (auto i : {0,1,2,3,4,5,6,7,8,9})
+#ifdef _M_X64
+		int loopNum = 10;
+#else
+		int loopNum = 3;
+#endif
+		for (int i = 0; i < loopNum;++i)
 			this->sequenceName.pop_back();
 	}
 	virtual ~Sequence(){}

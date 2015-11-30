@@ -12,7 +12,7 @@ namespace fbx
 {
 	namespace resource
 	{
-		std::shared_ptr<FbxScene> LoadModel(const std::string& fileName)
+		FbxScene* LoadModel(const std::string& fileName)
 		{
 			static std::shared_ptr<FbxManager> manager;
 			if (manager == nullptr)
@@ -40,10 +40,7 @@ namespace fbx
 			auto meshAxisSystem = scene->GetGlobalSettings().GetAxisSystem();
 
 			FbxGeometryConverter(manager.get()).Triangulate(scene, true);
-			return std::shared_ptr<FbxScene>(scene, [](FbxScene *p)
-			{
-				//p->Destroy();
-			});
+			return scene;
 		}
 	}
 }

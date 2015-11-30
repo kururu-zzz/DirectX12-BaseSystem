@@ -108,7 +108,7 @@ namespace d3d
 			D3D12_ROOT_PARAMETER rootParameters[1];
 
 			ranges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-			ranges[0].NumDescriptors = 1;
+			ranges[0].NumDescriptors = 2;
 			ranges[0].BaseShaderRegister = 0;
 			ranges[0].RegisterSpace = 0;
 			ranges[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
@@ -278,7 +278,7 @@ namespace d3d
 		D3D12_DESCRIPTOR_HEAP_DESC defaultDesc = {};
 		if (!descriptHeapDesc)
 		{
-			defaultDesc.NumDescriptors = 1;
+			defaultDesc.NumDescriptors = 2;
 			defaultDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 			defaultDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 			descriptHeapDesc = &defaultDesc;
@@ -366,17 +366,22 @@ namespace d3d
 		return vertexBufferView;
 	}
 
-	void CreateConstantBufferView(ID3D12Device* device, ID3D12Resource * resource, void * data,size_t constantBufferSize, UINT8** dataBegin, ID3D12DescriptorHeap* cbvDescriptorHeap)
+	void CreateConstantBufferView(ID3D12Device* device, ID3D12Resource * resource, void * data,size_t constantBufferSize, UINT8** dataBegin, ID3D12DescriptorHeap* cbvDescriptorHeap,int slotNum)
 	{
 		// Describe and create a constant buffer view.
 		// cf.MicroSoft Sample Source
+
+		auto offset = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		auto handle = cbvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+		handle.ptr += offset * slotNum;
+
 
 		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
 		cbvDesc.BufferLocation = resource->GetGPUVirtualAddress();
 		// CB size is required to be 256-byte aligned.
 		// cf.MicroSoft Sample Source
 		cbvDesc.SizeInBytes = (constantBufferSize + 255) & ~255;
-		device->CreateConstantBufferView(&cbvDesc, cbvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+		device->CreateConstantBufferView(&cbvDesc, handle);
 
 		ZeroMemory(data, constantBufferSize);
 		DirectX::ThrowIfFailed(

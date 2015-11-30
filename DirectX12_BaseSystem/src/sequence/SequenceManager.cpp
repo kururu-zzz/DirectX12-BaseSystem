@@ -11,11 +11,11 @@ SequenceManager::SequenceManager()
 
 bool SequenceManager::Update(){
 	bool continueFlag = true;
-	std::vector<std::shared_ptr<Sequence>> updatableSequence;
+	std::vector<Sequence*> updatableSequence;
 	for (auto& sequence : sequenceContainer)
 	{
 		if (sequence.second->isUpdatable())
-			updatableSequence.emplace_back(sequence.second);
+			updatableSequence.emplace_back(sequence.second.get());
 	}
 	for (auto& sequence : updatableSequence)
 	{
@@ -30,7 +30,7 @@ void SequenceManager::Draw(ID3D12GraphicsCommandList* commandList){
 	{
 		drawableSequenceNum += static_cast<int>(sequence.second->isDrawable());
 	}
-	std::vector<std::shared_ptr<Sequence>*> drawableSequence;
+	std::vector<Sequence*> drawableSequence;
 	drawableSequence.resize(drawableSequenceNum);
 	for (auto& sequence : sequenceContainer)
 	{
@@ -46,12 +46,12 @@ void SequenceManager::Draw(ID3D12GraphicsCommandList* commandList){
 					priority--;
 			}
 			if (drawableSequence[priority] == nullptr)
-				drawableSequence[priority] = &sequence.second;
+				drawableSequence[priority] = sequence.second.get();
 		}
 	}
 	for (auto& sequence : drawableSequence)
 	{
 		if (sequence != nullptr)
-			(*sequence)->Draw(commandList);
+			sequence->Draw(commandList);
 	}
 }

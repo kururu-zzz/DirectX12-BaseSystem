@@ -23,7 +23,6 @@ namespace DX12
 		std::unordered_map<std::string, D3D12_SUBRESOURCE_DATA> subResourceContainer;
 		std::unordered_map<std::string, std::shared_ptr<ID3D12Resource>> textureResourceContainer;
 		std::unordered_map<std::string, std::shared_ptr<ID3D12Resource>> heapResourceContainer;
-		std::unordered_map<std::string, std::shared_ptr<ID3D12DescriptorHeap>> srvContainer;
 	private:
 		TextureContainer() {}
 		TextureContainer(const TextureContainer& rhs);
@@ -37,11 +36,7 @@ namespace DX12
 		void Init(std::shared_ptr<ID3D12GraphicsCommandList> commandList);
 		void CreateTexture(const std::string& fileName);
 		void SetTexture(ID3D12GraphicsCommandList* bundle, const std::string& fileName, int textureNum);
-		ID3D12DescriptorHeap* GetLastUseSRV()
-		{
-			auto srv = srvContainer.at(lastSetSRVName).get();
-			return srv;
-		}
+		static ID3D12DescriptorHeap* GetDescriptorHeap();
 	};
 
 	inline void InitTextureContainer(std::shared_ptr<ID3D12GraphicsCommandList> commandList)
@@ -57,11 +52,6 @@ namespace DX12
 	inline void CreateTexture(const std::string& fileName)
 	{
 		TextureContainer::GetInstance()->CreateTexture(fileName);
-	}
-
-	inline ID3D12DescriptorHeap* GetLastUseSRV()
-	{
-		return TextureContainer::GetInstance()->GetLastUseSRV();
 	}
 }
 

@@ -6,10 +6,11 @@
 namespace DX12
 {
 	static std::mutex mutex;
-
+	static std::shared_ptr<ID3D12DescriptorHeap> descriptorHeap;
 	void TextureContainer::Init(std::shared_ptr<ID3D12GraphicsCommandList> commandList)
 	{
 		this->commandList = commandList;
+		descriptorHeap = d3d::CreateSRVDescriptorHeap();
 	}
 
 	void TextureContainer::CreateTexture(const std::string& fileName)
@@ -35,11 +36,7 @@ namespace DX12
 
 			subResourceContainer.emplace(fileName, subResource);
 
-			auto srvDescriptorHeap = d3d::CreateSRVDescriptorHeap();
-
-			d3d::CreateShaderResourceView(textureResourceContainer.at(fileName).get(), srvDescriptorHeap.get());
-
-			srvContainer.emplace(fileName, srvDescriptorHeap);
+			d3d::CreateShaderResourceView(textureResourceContainer.at(fileName).get(), descriptorHeap.get());
 
 			d3d::UpdateSubresources(commandList.get(), textureResourceContainer.at(fileName).get(), heapResourceContainer.at(fileName).get(), 0, 0, 1, &subResourceContainer.at(fileName));
 		}
@@ -50,12 +47,18 @@ namespace DX12
 		std::lock_guard<std::mutex> lock(mutex);
 		if (textureContainer.find(fileName) != textureContainer.end())
 		{
-			lastSetSRVName = fileName;
-			auto srvDescriptorHeap = srvContainer.at(fileName).get();
+			auto heap = descriptorHeap.get();
 
-			bundle->SetDescriptorHeaps(1, &srvDescriptorHeap);
-			bundle->SetGraphicsRootDescriptorTable(1, srvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+			d3d::CreateShaderResourceView(textureResourceContainer.at(fileName).get(), descriptorHeap.get());
+
+			bundle->SetDescriptorHeaps(1, &heap);
+			bundle->SetGraphicsRootDescriptorTable(1, descriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
 		}
+	}
+
+	ID3D12DescriptorHeap* TextureContainer::GetDescriptorHeap()
+	{
+		return descriptorHeap.get();
 	}
 }

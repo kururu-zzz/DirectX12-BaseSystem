@@ -3,6 +3,11 @@ cbuffer ConstantBuffer : register(b0)
 	float4 offset;
 }
 
+cbuffer ConstantBuffer2 : register(b1)
+{
+	float4 offset2;
+}
+
 
 struct InputVS
 {
@@ -43,7 +48,7 @@ void RenderGS(triangle OutputVS In[3],         // ƒgƒ‰ƒCƒAƒ“ƒOƒ‹ ƒŠƒXƒg‚ğ\¬‚·‚
 	// ‚à‚Æ‚Ì’¸“_‚ğo—Í
 	for (i = 0; i < 3; i++)
 	{
-		Out.pos = In[i].pos + offset;
+		Out.pos = In[i].pos + offset + offset2;
 
 		Out.color = In[i].color;
 

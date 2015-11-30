@@ -87,6 +87,9 @@
     <ClCompile Include="src\object\fbx\WorldMatrix.cpp">
       <Filter>ソース ファイル\object\fbx</Filter>
     </ClCompile>
+    <ClCompile Include="src\core\ConstantBufferManager.cpp">
+      <Filter>ソース ファイル\core</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\core\Config.h">
@@ -139,6 +142,9 @@
     </ClInclude>
     <ClInclude Include="src\object\fbx\WorldMatrix.h">
       <Filter>ヘッダー ファイル\object\fbx</Filter>
+    </ClInclude>
+    <ClInclude Include="src\core\ConstantBufferManager.h">
+      <Filter>ヘッダー ファイル\core</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

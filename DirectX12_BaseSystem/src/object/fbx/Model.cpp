@@ -2,8 +2,9 @@
 #include "Mesh.h"
 #include "Material.h"
 #include "fbxLoader.h"
+#include "../TextureContainer.h"
+#include "../../core/ConstantBufferManager.h"
 #include <d3d12.h>
-#include <array>
 #include <algorithm>
 
 
@@ -18,7 +19,7 @@ namespace DX12
 	};
 	struct BoneMatrix
 	{
-		std::array<DirectX::XMFLOAT4X4,64> boneMat;
+		std::vector<DirectX::XMFLOAT4X4> boneMat;
 		BoneMatrix()
 		{
 			std::for_each(boneMat.begin(), boneMat.end(), [](DirectX::XMFLOAT4X4& mat)
@@ -38,16 +39,16 @@ namespace DX12
 	}
 	void LoadMaterial(
 		FbxScene* scene,
-		std::vector<std::shared_ptr<fbx::element::Material>>* _materialContainer,
+		std::vector<std::shared_ptr<fbx::element::Material>>* materialContainer,
 		std::unordered_map<std::string,int>* materialIndexTable
 		)
 	{
 		auto materialCount = scene->GetMaterialCount();
-		_materialContainer->reserve(materialCount);
+		materialContainer->reserve(materialCount);
 		for (int i = 0; i < materialCount; ++i) {
-			auto _material = fbx::element::LoadMaterial(scene->GetMaterial(i));
-			_materialContainer->emplace_back(_material);
-			materialIndexTable->emplace(_material->materialName, i);
+			auto material = fbx::element::LoadMaterial(scene->GetMaterial(i));
+			materialContainer->emplace_back(material);
+			materialIndexTable->emplace(material->materialName, i);
 		}
 	}
 
@@ -130,14 +131,24 @@ namespace DX12
 	Model::Model(const std::string& modelName){
 		auto scene = fbx::resource::LoadModel(modelName);
 
-		LoadMaterial(scene.get(), &materialContainer,&materialIndexTable);///< シーンに含まれるマテリアルの解析
+		LoadMaterial(scene, &materialContainer,&materialIndexTable);///< シーンに含まれるマテリアルの解析
 
-		LoadMesh(scene.get(), &meshContainer,&meshIndexTable);///< シーンに含まれるメッシュの解析
+		LoadMesh(scene, &meshContainer,&meshIndexTable);///< シーンに含まれるメッシュの解析
 
 		//LoadAnimation(&_scene, &_animContainer, &_animIndexTable,&_invBaseposeMatrixList,&_boneNodeNameList,modelName);
 
 		//if (animContainer.size() != 0)
 		//currentAnimationName = animIndexTable.begin()->first;
+	}
+
+	void Model::Init(
+		const DirectX::XMFLOAT3& translate,
+		const DirectX::XMFLOAT3& scale,
+		const DirectX::XMFLOAT3& rotate)
+	{
+		SetTranslate(translate);
+		SetScale(scale);
+		SetRotate(rotate);
 	}
 
 	void Model::SetTranslate(const DirectX::XMFLOAT3& translate){
@@ -181,7 +192,7 @@ namespace DX12
 		_currentAnimationName = animationName;
 	}*/
 
-	void Model::Draw(ID3D12GraphicsCommandList* commandList)
+	void Model::Draw(ID3D12GraphicsCommandList* commandList,int instanceNum)
 	{
 		/*std::shared_ptr<fbx::Animation> currentAnim;
 		if (_animContainer.size() != 0)
@@ -196,24 +207,11 @@ namespace DX12
 				auto boneMat = currentAnim->GetBoneMatrix(meshId);
 				static BoneMatrix out;
 				std::copy(boneMat.begin(), boneMat.end(), out.boneMat.begin());
-				DX11::ConstantBuffer::SetBuffer(deviceContext, out, ConstantBuffer::cBufferSlot::Bone);
+				DX11::ConstantBuffer::SetBuffer(deviceContext, out, ConstantBuffer::BufferSlot::Bone);
 			}*/
 			auto& material = materialContainer.at(materialIndexTable.at(mesh->GetMaterialName()));
-			//DX11::ConstantBuffer::SetBuffer(deviceContext, GetMaterialParam(material.get()), DX11::ConstantBuffer::cBufferSlot::Material);
-			//SetTexture(deviceContext,material->diffuseTextureName);
-			mesh->Draw(commandList);
-		}
-	}
-
-	void Model::Draw(ID3D12GraphicsCommandList* commandList,int instanceNum)
-	{
-		for (auto mesh : meshContainer)
-		{
-			auto material = materialContainer.at(materialIndexTable.at(mesh->GetMaterialName()));
-			//std::vector<XMFLOAT4X4> boneMat;
-			//currentAnim->GetBoneMatrix(,,&boneMat);
-			//DX11::ConstantBuffer::SetBuffer(deviceContext, GetMaterialParam(material.get()), DX11::ConstantBuffer::cBufferSlot::Material);
-			//SetTexture(deviceContext,material->diffuseTextureName);
+			DX12::ConstantBuffer::SetBuffer(commandList, GetMaterialParam(material.get()), DX12::ConstantBuffer::BufferSlot::Material);
+			//DX12::SetTexture(commandList, "resource/texture/inami.dds");
 			mesh->Draw(commandList,instanceNum);
 		}
 	}

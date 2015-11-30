@@ -14,7 +14,7 @@ namespace d3d
 		p->Release();
 	}
 	// !! FEATURE_LEVELÇÃéÊìæÇ‚ÇÎÇ§
-	std::shared_ptr<ID3D12Device> CreateDevice()
+	void CreateDevice()
 	{
 #ifdef _DEBUG
 		// Enable the D3D12 debug layer.
@@ -26,12 +26,12 @@ namespace d3d
 			debugController->Release();
 		}
 #endif
-		ID3D12Device* device;
+		ID3D12Device* dev;
 
 		auto hr = D3D12CreateDevice(
 			nullptr,
-			D3D_FEATURE_LEVEL_11_0,
-			IID_PPV_ARGS(&device)
+			D3D_FEATURE_LEVEL_12_0,
+			IID_PPV_ARGS(&dev)
 			);
 
 		if (!SUCCEEDED(hr))
@@ -42,23 +42,14 @@ namespace d3d
 				D3D12CreateDevice(
 					adapter.get(),
 					D3D_FEATURE_LEVEL_12_0,
-					IID_PPV_ARGS(&device)
+					IID_PPV_ARGS(&dev)
 					));
 		}
-		return std::shared_ptr<ID3D12Device>(device, ReleaseIUnknown);
-	}
-
-	void CheckExistDevice()
-	{
-		if (device == nullptr)
-		{
-			device = CreateDevice();
-		}
+		device = std::shared_ptr<ID3D12Device>(dev, ReleaseIUnknown);
 	}
 
 	std::shared_ptr<ID3D12CommandQueue> CreateCommandQueue(const D3D12_COMMAND_QUEUE_DESC* queueDesc)
 	{
-		CheckExistDevice();
 		ID3D12CommandQueue* commandQueue;
 		D3D12_COMMAND_QUEUE_DESC defaultDesc = {};
 		if (!queueDesc)
@@ -77,7 +68,6 @@ namespace d3d
 
 	std::shared_ptr<ID3D12CommandAllocator> CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE listType)
 	{
-		CheckExistDevice();
 		ID3D12CommandAllocator* commandAllocator;
 		DirectX::ThrowIfFailed(
 			device->CreateCommandAllocator(
@@ -91,20 +81,21 @@ namespace d3d
 	std::shared_ptr<ID3DBlob> CreateBlob(const std::string& fileName, const std::string& shaderName, const std::string& shaderType)
 	{
 		ID3DBlob* blob;
+		ID3DBlob* errorBlob;
 		WCHAR	path[100];
 		MultiByteToWideChar(CP_ACP, 0, fileName.c_str(), -1, path, MAX_PATH);
 
 #ifdef _DEBUG
 		// Enable better shader debugging with the graphics debugging tools.
 		// cf.MicroSoft Sample Source
-		UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+		UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION | D3DCOMPILE_PACK_MATRIX_COLUMN_MAJOR | D3DCOMPILE_ENABLE_STRICTNESS;
 #else
 		UINT compileFlags = 0;
 #endif
 
 		DirectX::ThrowIfFailed(
 			D3DCompileFromFile(
-				path, nullptr, nullptr, shaderName.c_str(), shaderType.c_str(), compileFlags, 0, &blob, nullptr
+				path, nullptr, nullptr, shaderName.c_str(), shaderType.c_str(), compileFlags, 0, &blob, &errorBlob
 				));
 		return std::shared_ptr<ID3DBlob>(blob, ReleaseIUnknown);
 	}
@@ -115,48 +106,40 @@ namespace d3d
 		ID3DBlob* pOutBlob;
 		ID3DBlob* pErrorBlob;
 		D3D12_ROOT_SIGNATURE_DESC defaultDesc = {};
+		std::vector<D3D12_DESCRIPTOR_RANGE> ranges;
+		std::vector<D3D12_ROOT_PARAMETER> rootParameters;
+
 		if (!rootDesc)
 		{
-			std::vector<D3D12_DESCRIPTOR_RANGE> ranges;
-			std::vector<D3D12_ROOT_PARAMETER> rootParameters;
+			const int rootSize = 1;
+			ranges.resize(rootSize+1);
+			rootParameters.resize(rootSize + 1);
 
-			///!óvèCê≥
-			for (int i = 0; i < 5; ++i)
+			///!!óvèCê≥
+			for (int i = 0; i < rootSize; ++i)
 			{
-				D3D12_DESCRIPTOR_RANGE range;
-				range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-				range.NumDescriptors = 1;
-				range.BaseShaderRegister = i;
-				range.RegisterSpace = 0;
-				range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+				ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+				ranges[i].NumDescriptors = 4;
+				ranges[i].BaseShaderRegister = i;
+				ranges[i].RegisterSpace = 0;
+				ranges[i].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-				ranges.emplace_back(range);
-
-				D3D12_ROOT_PARAMETER rootParameter;
-				rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-				rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-				rootParameter.DescriptorTable.NumDescriptorRanges = 1;
-				rootParameter.DescriptorTable.pDescriptorRanges = &ranges[i];
-
-				rootParameters.emplace_back(rootParameter);
+				rootParameters[i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+				rootParameters[i].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+				rootParameters[i].DescriptorTable.NumDescriptorRanges = 1;
+				rootParameters[i].DescriptorTable.pDescriptorRanges = &ranges[i];
 			}
 			{
-				D3D12_DESCRIPTOR_RANGE range;
-				range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-				range.NumDescriptors = 1;
-				range.BaseShaderRegister = 0;
-				range.RegisterSpace = 0;
-				range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+				ranges[rootSize].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+				ranges[rootSize].NumDescriptors = 1;
+				ranges[rootSize].BaseShaderRegister = 0;
+				ranges[rootSize].RegisterSpace = 0;
+				ranges[rootSize].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-				ranges.emplace_back(range);
-
-				D3D12_ROOT_PARAMETER rootParameter;
-				rootParameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-				rootParameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-				rootParameter.DescriptorTable.NumDescriptorRanges = 1;
-				rootParameter.DescriptorTable.pDescriptorRanges = &ranges[rootParameters.size()];
-
-				rootParameters.emplace_back(rootParameter);
+				rootParameters[rootSize].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+				rootParameters[rootSize].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+				rootParameters[rootSize].DescriptorTable.NumDescriptorRanges = 1;
+				rootParameters[rootSize].DescriptorTable.pDescriptorRanges = &ranges[rootSize];
 			}
 			D3D12_STATIC_SAMPLER_DESC sampler = {};
 			sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
@@ -173,16 +156,14 @@ namespace d3d
 			sampler.RegisterSpace = 0;
 			sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-			defaultDesc.NumParameters = ranges.size();
+			defaultDesc.NumParameters = static_cast<UINT>(ranges.size());
 			defaultDesc.pParameters = &rootParameters[0];
 			defaultDesc.NumStaticSamplers = 1;
 			defaultDesc.pStaticSamplers = &sampler;
 
 			defaultDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
-				D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS |
 				D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
 				D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS;
-
 			rootDesc = &defaultDesc;
 		}
 		DirectX::ThrowIfFailed(
@@ -248,7 +229,7 @@ namespace d3d
 	{
 		D3D12_RASTERIZER_DESC rasterizerDesc = {};
 
-		rasterizerDesc.CullMode = D3D12_CULL_MODE::D3D12_CULL_MODE_BACK;
+		rasterizerDesc.CullMode = D3D12_CULL_MODE::D3D12_CULL_MODE_NONE;
 		rasterizerDesc.FillMode = D3D12_FILL_MODE::D3D12_FILL_MODE_SOLID;
 		rasterizerDesc.DepthClipEnable = TRUE;
 
@@ -263,7 +244,7 @@ namespace d3d
 			D3D12_INPUT_ELEMENT_DESC element = { semantic.first.c_str(), 0, semantic.second, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
 			layoutElem.emplace_back(element);
 		};
-		D3D12_INPUT_LAYOUT_DESC inputLayout = { layoutElem.data(),layoutElem.size() };
+		D3D12_INPUT_LAYOUT_DESC inputLayout = { layoutElem.data(),static_cast<UINT>(layoutElem.size()) };
 		return inputLayout;
 	}
 
@@ -278,29 +259,37 @@ namespace d3d
 		const D3D12_RASTERIZER_DESC& rasterizeDesc,
 		const D3D12_BLEND_DESC& blend)
 	{
-		CheckExistDevice();
 		ID3D12PipelineState* pipelineState;
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC gpsDesc = {};
 		gpsDesc.InputLayout = layout;
 		gpsDesc.pRootSignature = rootSignature;
 		if (vertexBlob != nullptr)
-			gpsDesc.VS = { reinterpret_cast<UINT8*>(vertexBlob->GetBufferPointer()), vertexBlob->GetBufferSize() };
+			gpsDesc.VS = { static_cast<UINT8*>(vertexBlob->GetBufferPointer()), vertexBlob->GetBufferSize() };
 		if (geometryBlob != nullptr)
-			gpsDesc.GS = { reinterpret_cast<UINT8*>(geometryBlob->GetBufferPointer()), geometryBlob->GetBufferSize() };
+			gpsDesc.GS = { static_cast<UINT8*>(geometryBlob->GetBufferPointer()), geometryBlob->GetBufferSize() };
 		if (pixelBlob != nullptr)
-			gpsDesc.PS = { reinterpret_cast<UINT8*>(pixelBlob->GetBufferPointer()), pixelBlob->GetBufferSize() };
+			gpsDesc.PS = { static_cast<UINT8*>(pixelBlob->GetBufferPointer()), pixelBlob->GetBufferSize() };
 		if (hullBlob != nullptr)
-			gpsDesc.HS = { reinterpret_cast<UINT8*>(hullBlob->GetBufferPointer()), hullBlob->GetBufferSize() };
+			gpsDesc.HS = { static_cast<UINT8*>(hullBlob->GetBufferPointer()), hullBlob->GetBufferSize() };
 		if (domainBlob != nullptr)
-			gpsDesc.DS = { reinterpret_cast<UINT8*>(domainBlob->GetBufferPointer()), domainBlob->GetBufferSize() };
+			gpsDesc.DS = { static_cast<UINT8*>(domainBlob->GetBufferPointer()), domainBlob->GetBufferSize() };
 		gpsDesc.RasterizerState = rasterizeDesc;
 		gpsDesc.BlendState = blend;
-		gpsDesc.DepthStencilState.DepthEnable = FALSE;
+		gpsDesc.DepthStencilState.DepthEnable = TRUE;
+		gpsDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+		gpsDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
 		gpsDesc.DepthStencilState.StencilEnable = FALSE;
+		gpsDesc.DepthStencilState.StencilReadMask = D3D12_DEFAULT_STENCIL_READ_MASK;
+		gpsDesc.DepthStencilState.StencilWriteMask = D3D12_DEFAULT_STENCIL_WRITE_MASK;
+		const D3D12_DEPTH_STENCILOP_DESC defaultStencilOp =
+		{ D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_STENCIL_OP_KEEP, D3D12_COMPARISON_FUNC_ALWAYS };
+		gpsDesc.DepthStencilState.FrontFace = defaultStencilOp;
+		gpsDesc.DepthStencilState.BackFace = defaultStencilOp;
 		gpsDesc.SampleMask = UINT_MAX;
 		gpsDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 		gpsDesc.NumRenderTargets = 1;
 		gpsDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+		gpsDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 		gpsDesc.SampleDesc.Count = 1;
 		DirectX::ThrowIfFailed(
 			device->CreateGraphicsPipelineState(&gpsDesc, IID_PPV_ARGS(&pipelineState)));
@@ -328,12 +317,11 @@ namespace d3d
 
 	std::shared_ptr<ID3D12DescriptorHeap> CreateCBVDescriptorHeap(D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc)
 	{
-		CheckExistDevice();
 		ID3D12DescriptorHeap* descriptorHeap;
 		D3D12_DESCRIPTOR_HEAP_DESC defaultDesc = {};
 		if (!descriptHeapDesc)
 		{
-			defaultDesc.NumDescriptors = 1;
+			defaultDesc.NumDescriptors = 4;
 			defaultDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 			defaultDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 			descriptHeapDesc = &defaultDesc;
@@ -348,7 +336,6 @@ namespace d3d
 
 	std::shared_ptr<ID3D12DescriptorHeap> CreateSRVDescriptorHeap(D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc)
 	{
-		CheckExistDevice();
 		ID3D12DescriptorHeap* descriptorHeap;
 		D3D12_DESCRIPTOR_HEAP_DESC defaultDesc = {};
 		if (!descriptHeapDesc)
@@ -366,9 +353,27 @@ namespace d3d
 		return std::shared_ptr<ID3D12DescriptorHeap>(descriptorHeap, ReleaseIUnknown);
 	}
 
+	std::shared_ptr<ID3D12DescriptorHeap> CreateDSVDescriptorHeap(D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc)
+	{
+		ID3D12DescriptorHeap* descriptorHeap;
+		D3D12_DESCRIPTOR_HEAP_DESC defaultDesc = {};
+		if (!descriptHeapDesc)
+		{
+			defaultDesc.NumDescriptors = 1;
+			defaultDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+			defaultDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+			descriptHeapDesc = &defaultDesc;
+		}
+		DirectX::ThrowIfFailed(
+			device->CreateDescriptorHeap(
+				descriptHeapDesc,
+				IID_PPV_ARGS(&descriptorHeap)
+				));
+		return std::shared_ptr<ID3D12DescriptorHeap>(descriptorHeap, ReleaseIUnknown);
+	}
+
 	std::shared_ptr<ID3D12GraphicsCommandList> CreateCommandList(ID3D12CommandAllocator* commandAllocator, ID3D12PipelineState* pipeLineState, D3D12_COMMAND_LIST_TYPE listType)
 	{
-		CheckExistDevice();
 		ID3D12GraphicsCommandList* commandList;
 		DirectX::ThrowIfFailed(
 			device->CreateCommandList(
@@ -384,7 +389,6 @@ namespace d3d
 
 	std::vector<std::shared_ptr<ID3D12Resource>> CreateRenderTargets(IDXGISwapChain * swapChain, ID3D12DescriptorHeap* rtvDescriptorHeap, UINT renderTargetNum)
 	{
-		CheckExistDevice();
 		std::vector<std::shared_ptr<ID3D12Resource>> renderTargets;
 		renderTargets.reserve(renderTargetNum);
 		D3D12_CPU_DESCRIPTOR_HANDLE handle;
@@ -404,7 +408,6 @@ namespace d3d
 
 	std::shared_ptr<ID3D12Resource> CreateResource(size_t size)
 	{
-		CheckExistDevice();
 		ID3D12Resource* resource;
 		D3D12_HEAP_PROPERTIES heapProperties = {};
 		heapProperties.Type = D3D12_HEAP_TYPE::D3D12_HEAP_TYPE_UPLOAD;
@@ -469,6 +472,45 @@ namespace d3d
 		return std::shared_ptr<ID3D12Resource>(resource, ReleaseIUnknown);
 	}
 
+	std::shared_ptr<ID3D12Resource> CreateDepthStencilResoruce(UINT width, UINT height)
+	{
+		ID3D12Resource* resource;
+		D3D12_HEAP_PROPERTIES heapProperties = {};
+		heapProperties.Type = D3D12_HEAP_TYPE_DEFAULT;
+		heapProperties.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY::D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+		heapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL::D3D12_MEMORY_POOL_UNKNOWN;
+		heapProperties.CreationNodeMask = 1;
+		heapProperties.VisibleNodeMask = 1;
+
+		D3D12_CLEAR_VALUE depthOptimizedClearValue = {};
+		depthOptimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
+		depthOptimizedClearValue.DepthStencil.Depth = 1.0f;
+		depthOptimizedClearValue.DepthStencil.Stencil = 0;
+
+
+		D3D12_RESOURCE_DESC textureDesc = {};
+		textureDesc.MipLevels = 0;
+		textureDesc.Format = DXGI_FORMAT_D32_FLOAT;
+		textureDesc.Width = width;
+		textureDesc.Height = height;
+		textureDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+		textureDesc.DepthOrArraySize = 1;
+		textureDesc.SampleDesc.Count = 1;
+		textureDesc.SampleDesc.Quality = 0;
+		textureDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+
+		DirectX::ThrowIfFailed(
+			device->CreateCommittedResource(
+				&heapProperties,
+				D3D12_HEAP_FLAG_NONE,
+				&textureDesc,
+				D3D12_RESOURCE_STATE_DEPTH_WRITE,
+				&depthOptimizedClearValue,    // Clear value
+				IID_PPV_ARGS(&resource)
+				));
+		return std::shared_ptr<ID3D12Resource>(resource, ReleaseIUnknown);
+	}
+
 	D3D12_VERTEX_BUFFER_VIEW CreateVertexBufferView(ID3D12Resource * resource, void* data, size_t vertexSize, UINT vertexNum)
 	{
 		D3D12_VERTEX_BUFFER_VIEW vertexBufferView;
@@ -479,8 +521,8 @@ namespace d3d
 		resource->Unmap(0, nullptr);
 
 		vertexBufferView.BufferLocation = resource->GetGPUVirtualAddress();
-		vertexBufferView.StrideInBytes = vertexSize;
-		vertexBufferView.SizeInBytes = vertexSize*vertexNum;
+		vertexBufferView.StrideInBytes = static_cast<UINT>(vertexSize);
+		vertexBufferView.SizeInBytes = static_cast<UINT>(vertexSize)*vertexNum;
 
 		return vertexBufferView;
 	}
@@ -496,42 +538,51 @@ namespace d3d
 
 		indexBufferView.Format = DXGI_FORMAT_R32_UINT;
 		indexBufferView.BufferLocation = resource->GetGPUVirtualAddress();
-		indexBufferView.SizeInBytes = indexSize*vertexNum;
+		indexBufferView.SizeInBytes = static_cast<UINT>(indexSize)*vertexNum;
 
 		return indexBufferView;
 	}
 
-	void CreateConstantBufferView(ID3D12Resource * resource, void * data, size_t constantBufferSize,ID3D12DescriptorHeap* cbvDescriptorHeap)
+	void CreateConstantBufferView(ID3D12Resource * resource, void * data, size_t constantBufferSize,ID3D12DescriptorHeap* cbvDescriptorHeap,int slotIndex)
 	{
-		CheckExistDevice();
 		// Describe and create a constant buffer view.
 		// cf.MicroSoft Sample Source
-
 		UINT8* dataBegin;
+
+		auto handle = cbvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+		handle.ptr += slotIndex * device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
 		cbvDesc.BufferLocation = resource->GetGPUVirtualAddress();
 		// CB size is required to be 256-byte aligned.
 		// cf.MicroSoft Sample Source
 		cbvDesc.SizeInBytes = (constantBufferSize + 255) & ~255;
-		device->CreateConstantBufferView(&cbvDesc, cbvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+		device->CreateConstantBufferView(&cbvDesc, handle);
 
 		DirectX::ThrowIfFailed(
 			resource->Map(0, nullptr, reinterpret_cast<void**>(&dataBegin)));
 		memcpy(dataBegin, data, constantBufferSize);
 		resource->Unmap(0, nullptr);
-
 	}
 
 	void CreateShaderResourceView(ID3D12Resource* resource, ID3D12DescriptorHeap* srvDescriptorHeap)
 	{
-		CheckExistDevice();
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 		srvDesc.Format = resource->GetDesc().Format;
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 		srvDesc.Texture2D.MipLevels = 1;
 		device->CreateShaderResourceView(resource, &srvDesc, srvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+	}
+
+	void CreateDepthStencilView(ID3D12Resource* resource, ID3D12DescriptorHeap* dsvDescriptorHeap)
+	{
+		D3D12_DEPTH_STENCIL_VIEW_DESC depthStencilDesc = {};
+		depthStencilDesc.Format = DXGI_FORMAT_D32_FLOAT;
+		depthStencilDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+		depthStencilDesc.Flags = D3D12_DSV_FLAG_NONE;
+
+		device->CreateDepthStencilView(resource, &depthStencilDesc, dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 	}
 
 	void MemcpySubresource(
@@ -661,7 +712,6 @@ namespace d3d
 
 	std::shared_ptr<ID3D12Fence> CreateFence(D3D12_FENCE_FLAGS flag)
 	{
-		CheckExistDevice();
 		ID3D12Fence* fence;
 		DirectX::ThrowIfFailed(
 			device->CreateFence(
@@ -725,10 +775,11 @@ namespace d3d
 		ID3D12PipelineState* pipeLineState,
 		ID3D12RootSignature* rootSignature,
 		ID3D12DescriptorHeap* rtvDescriptorHeap,
-		ID3D12Resource** renderTarget,
+		ID3D12Resource* renderTarget,
+		ID3D12DescriptorHeap* dsvDescriptorHeap,
 		const D3D12_VIEWPORT& viewport,
 		const D3D12_RECT& rect,
-		const int frameIndex)
+		const UINT& frameIndex)
 	{
 		// Command list allocators can only be reset when the associated 
 		// command lists have finished execution on the GPU; apps should use 
@@ -749,43 +800,43 @@ namespace d3d
 		commandList->RSSetViewports(1, &viewport);
 		commandList->RSSetScissorRects(1, &rect);
 
-		D3D12_RESOURCE_BARRIER result;
-		result.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		result.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		result.Transition.pResource = renderTarget[frameIndex];
-		result.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-		result.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-		result.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		D3D12_RESOURCE_BARRIER resourceBarrier;
+		resourceBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		resourceBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		resourceBarrier.Transition.pResource = renderTarget;
+		resourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+		resourceBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		resourceBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 
 		// Indicate that the back buffer will be used as a render target.
 		// cf.MicroSoft Sample Source
 
-		commandList->ResourceBarrier(1, &result);
+		commandList->ResourceBarrier(1, &resourceBarrier);
 
 		UINT rtvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
-		D3D12_CPU_DESCRIPTOR_HANDLE handle;
-		handle.ptr = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + frameIndex * rtvDescriptorSize;
-		commandList->OMSetRenderTargets(1, &handle, false, nullptr);
+		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle;
+		rtvHandle.ptr = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr + frameIndex * rtvDescriptorSize;
+
+		D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle;
+		dsvHandle.ptr = dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr;
+		commandList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
 
 		const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
-		commandList->ClearRenderTargetView(handle, clearColor, 0, nullptr);
+		commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+		commandList->ClearDepthStencilView(dsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 	}
 
 	void EndRendering(
-		ID3D12CommandAllocator* commandAllocator,
 		ID3D12GraphicsCommandList* commandList,
 		ID3D12CommandQueue* commandQueue,
-		ID3D12PipelineState* pipeLineState,
-		ID3D12RootSignature* rootSignature,
 		IDXGISwapChain* swapChain,
-		ID3D12Resource** renderTarget,
-		const int frameIndex)
+		ID3D12Resource* renderTarget)
 	{
 		D3D12_RESOURCE_BARRIER result;
 		result.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		result.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		result.Transition.pResource = renderTarget[frameIndex];
+		result.Transition.pResource = renderTarget;
 		result.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		result.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 		result.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;

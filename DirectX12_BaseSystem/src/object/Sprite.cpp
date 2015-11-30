@@ -126,6 +126,7 @@ namespace DX12
 		XMFLOAT3 difference = XMFLOAT3((size.x - this->size.x) / 2.f, (size.y - this->size.y) / 2.f, this->pos.z);
 		this->pos = XMFLOAT3(this->pos.x - difference.x, this->pos.y - difference.y, this->pos.z);
 		this->size = size;
+		this->base = XMFLOAT2(pos.x + size.x / 2, pos.y + size.y / 2);
 	}
 
 	void Sprite::SetAlpha(float alpha){

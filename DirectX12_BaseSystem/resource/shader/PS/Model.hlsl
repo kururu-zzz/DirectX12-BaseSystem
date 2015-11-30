@@ -1,3 +1,11 @@
+cbuffer MaterialBuffers : register(b2)
+{
+	float4 ambient;
+	float4 diffuse;
+	float4 emissive;
+	float4 speculer;
+}
+
 cbuffer Light : register(b3)
 {
 	float4 lightDirection;
@@ -23,15 +31,17 @@ float4 RenderPS(OutputGS inPixel) : SV_TARGET
 	float p = max(dot(inPixel.normal, L), 0.f);
 	p = p * 0.2f + 0.7f;
 	p = p * p;
-	Out = texDiffuse.Sample(samDiffuse, inPixel.texel);
+	Out = diffuse;
 	Out.rgb *= p;
-	return Out;
-}
 
+	return Out;
+	//return Out;
+}
+/*
 float4 HalfLambert( OutputGS inPixel ) : SV_TARGET
 {
 	float4 Out = (float4)0;
-	float3 L = normalize(LightDirection.xyz);
+	float3 L = normalize(lightDirection.xyz);
 
 	float p = max(dot(inPixel.normal, L), 0.f);
 	p = p * 0.2f + 0.7f;
@@ -55,4 +65,4 @@ float4 PhoneShader(OutputGS inPixel) : SV_TARGET
 	Out.rgb = Out.rgb * 0.5f + S;
 
 	return Out;
-}
+}*/

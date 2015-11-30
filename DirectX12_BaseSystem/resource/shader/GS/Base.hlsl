@@ -6,7 +6,7 @@ struct Camera
 {
 	matrix mtxView;
 	matrix mtxProjection;
-	float4 eyePos;
+	float4 pos;
 };
 cbuffer CameraBuffer : register(b1)
 {
@@ -52,7 +52,7 @@ void RenderGS(
 
 		Out.texel = In[i].texel;
 
-		Out.eye = normalize(camera.eyePos.xyz - In[i].pos.xyz);
+		Out.eye = normalize(camera.pos.xyz - In[i].pos.xyz);
 
 		Out.color = In[i].color;
 

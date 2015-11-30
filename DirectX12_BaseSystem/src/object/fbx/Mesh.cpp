@@ -19,12 +19,11 @@ namespace fbx
 			meshName = std::string(node->GetName());
 			materialName = std::string(node->GetMaterial(0)->GetName());
 
-			D3D12_VERTEX_BUFFER_VIEW vertexBufferView;
-			D3D12_INDEX_BUFFER_VIEW indexBufferView;
-			CreateVertex(fbxmesh,&vertexBufferView,&indexBufferView);
+			this->vertexBufferView = std::make_shared<D3D12_VERTEX_BUFFER_VIEW>();
+			this->indexBufferView = std::make_shared<D3D12_INDEX_BUFFER_VIEW>();
+			
+			CreateVertex(fbxmesh,vertexBufferView.get(),indexBufferView.get(),&vertexResource,&indexResource);
 
-			this->vertexBufferView = std::shared_ptr<D3D12_VERTEX_BUFFER_VIEW>(&vertexBufferView);
-			this->indexBufferView = std::shared_ptr<D3D12_INDEX_BUFFER_VIEW>(&indexBufferView);
 			world = std::make_shared<DX12::WorldMatrix>();
 		}
 
@@ -48,16 +47,14 @@ namespace fbx
 			world->SetRotate(rotate);
 		}
 
-		void Mesh::Draw(ID3D12GraphicsCommandList* commandList,int instanceNum){
-			// VB‚ÌƒZƒbƒg
-			UINT sizeTbl[] = { sizeof(Vertex) };
-			UINT offsetTbl[] = { 0 };
+		void Mesh::Draw(ID3D12GraphicsCommandList* commandList,int instanceNum)
+		{
+			world->SetConstantBuffer(commandList);
+
 			commandList->IASetVertexBuffers(0, 1, vertexBufferView.get());
 			commandList->IASetIndexBuffer(indexBufferView.get());
 
-			commandList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-
+			commandList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
 			commandList->DrawIndexedInstanced(indexNum, instanceNum, 0, 0, 0);
 		}

@@ -163,7 +163,7 @@ namespace d3d
 	*	@param dataBegin : begining of constantBuffer data;
 	*	@param cbvDescriptorHeap : ID3D12DescriptorHeap;
 	*/
-	void CreateConstantBufferView(ID3D12Device* device, ID3D12Resource* resource, void* data, size_t constantBufferSize, UINT8** dataBegin,ID3D12DescriptorHeap* cbvDescriptorHeap);
+	void CreateConstantBufferView(ID3D12Device* device, ID3D12Resource* resource, void* data, size_t constantBufferSize, UINT8** dataBegin,ID3D12DescriptorHeap* cbvDescriptorHeap,int slotNum);
 
 	/**
 	*	@brief create ID3D12Fence and return it;

@@ -18,6 +18,10 @@ namespace d3d
 namespace d3d
 {
 	/**
+	*	@brief create ID3D12Device;
+	*/
+	void CreateDevice();
+	/**
 	*	@brief create ID3D12CommandQueue and return it;
 	*	
 	*	@param queueDesc : D3D12_COMMAND_QUEUE_DESC* user defined.if nullptr,use default;
@@ -118,6 +122,14 @@ namespace d3d
 	std::shared_ptr<ID3D12DescriptorHeap> CreateSRVDescriptorHeap(D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc = nullptr);
 
 	/**
+	*	@brief create ID3D12DescriptorHeap for DepthStencilView and return it;
+	*	;
+	*	@param descriptHeapDesc : D3D12_DESCRIPTOR_HEAP_DESC* user defined.if nullptr,use default;
+	*	@return succeeded:return std::shared_ptr<ID3D12DescriptorHeap>,failed:throw std::exception;
+	*/
+	std::shared_ptr<ID3D12DescriptorHeap> CreateDSVDescriptorHeap(D3D12_DESCRIPTOR_HEAP_DESC* descriptHeapDesc = nullptr);
+
+	/**
 	*	@brief create ID3D12GraphicsCommandList and return it;
 	*	;
 	*	@param commandAllocator : ID3D12CommandAllocator*;
@@ -161,6 +173,15 @@ namespace d3d
 	std::shared_ptr<ID3D12Resource> CreateTextureResoruce(UINT width,UINT height);
 
 	/**
+	*	@brief create ID3D12Resource for DepthStencil and return it;
+	*
+	*	@param width : width of texture
+	*	@param height : height of texture
+	*	@return succeeded:return std::shared_ptr<ID3D12Resource>,failed:throw std::exception
+	*/
+	std::shared_ptr<ID3D12Resource> CreateDepthStencilResoruce(UINT width, UINT height);
+
+	/**
 	*	@brief create D3D12_VERTEX_BUFFER_VIEW and return it;
 	*	@param resource : ID3D12Resource*
 	*	@param data : vertex data
@@ -188,8 +209,9 @@ namespace d3d
 	*	@param constantBufferSize : size of constantBuffer struct;
 	*	@param dataBegin : begining of constantBuffer data;
 	*	@param cbvDescriptorHeap : ID3D12DescriptorHeap;
+	*	@param slotIndex : index of constant buffer;
 	*/
-	void CreateConstantBufferView(ID3D12Resource* resource, void* data, size_t constantBufferSize, ID3D12DescriptorHeap* cbvDescriptorHeap);
+	void CreateConstantBufferView(ID3D12Resource* resource, void* data, size_t constantBufferSize, ID3D12DescriptorHeap* cbvDescriptorHeap,int slotIndex);
 
 	/**
 	*	@brief create ShaderResourceView;
@@ -198,6 +220,14 @@ namespace d3d
 	*	@param srvDescriptorHeap : ID3D12DescriptorHeap*
 	*/
 	void CreateShaderResourceView(ID3D12Resource* resource, ID3D12DescriptorHeap* srvDescriptorHeap);
+
+	/**
+	*	@brief create DepthStencilView;
+	*	;
+	*	@param resource : ID3D12Resource*;
+	*	@param dsvDescriptorHeap : ID3D12DescriptorHeap;
+	*/
+	void CreateDepthStencilView(ID3D12Resource* resource, ID3D12DescriptorHeap* dsvDescriptorHeap);
 
 	/**
 	*	@brief update D3D12_SUBRESOURCE_DATA;
@@ -248,20 +278,17 @@ namespace d3d
 		ID3D12PipelineState* pipeLineState,
 		ID3D12RootSignature* rootSignature,
 		ID3D12DescriptorHeap* rtvDescriptorHeap,
-		ID3D12Resource** renderTarget, 
+		ID3D12Resource* renderTarget, 
+		ID3D12DescriptorHeap* dsvDescriptorHeap,
 		const D3D12_VIEWPORT& viewport,
 		const D3D12_RECT& rect,
-		const int frameIndex);
+		const UINT& frameIndex);
 
 	void EndRendering(
-		ID3D12CommandAllocator* commandAllocator,
 		ID3D12GraphicsCommandList* commandList,
 		ID3D12CommandQueue* commandQueue,
-		ID3D12PipelineState* pipeLineState,
-		ID3D12RootSignature* rootSignature,
 		IDXGISwapChain* swapChain,
-		ID3D12Resource** renderTarget,
-		const int frameIndex);
+		ID3D12Resource* renderTarget);
 
 	/**
 	*	@brief wait execution of commandList in previous frame ;

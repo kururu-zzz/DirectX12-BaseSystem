@@ -9,6 +9,7 @@
 struct ID3D12GraphicsCommandList;
 struct D3D12_VERTEX_BUFFER_VIEW;
 struct D3D12_INDEX_BUFFER_VIEW;
+struct ID3D12Resource;
 namespace DX12
 {
 	class WorldMatrix;
@@ -28,6 +29,8 @@ namespace fbx
 			int indexNum;
 			std::shared_ptr<D3D12_VERTEX_BUFFER_VIEW> vertexBufferView;
 			std::shared_ptr<D3D12_INDEX_BUFFER_VIEW> indexBufferView;
+			std::shared_ptr<ID3D12Resource> vertexResource;
+			std::shared_ptr<ID3D12Resource> indexResource;
 			std::shared_ptr<DX12::WorldMatrix> world;
 		public:
 			void SetTranslate(const DirectX::XMFLOAT3& translate);
