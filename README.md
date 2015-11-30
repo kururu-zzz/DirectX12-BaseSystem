@@ -1,5 +1,8 @@
 # DirectX12-BaseSystem
 
+11/30:fbxを用いたモデル描画に成功
+今後は定数バッファの正確な実装を完成させる予定
+
 9/5:Sprite,TextureContainerを実装完了
 コメント入れは保留
 
