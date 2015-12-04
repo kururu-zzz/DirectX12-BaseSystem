@@ -1,5 +1,6 @@
 #pragma comment( lib, "d3d12.lib" )
 
+#include "ConstantBufferManager.h"
 #include "d3d.h"
 #include "dxgi.h"
 #include <d3dcompiler.h>
@@ -115,11 +116,10 @@ namespace d3d
 			ranges.resize(rootSize+1);
 			rootParameters.resize(rootSize + 1);
 
-			///!!óvèCê≥
 			for (int i = 0; i < rootSize; ++i)
 			{
 				ranges[i].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-				ranges[i].NumDescriptors = 4;
+				ranges[i].NumDescriptors = static_cast<int>(DX12::ConstantBuffer::BufferSlot::ConstantBufferNum);
 				ranges[i].BaseShaderRegister = i;
 				ranges[i].RegisterSpace = 0;
 				ranges[i].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
@@ -321,7 +321,7 @@ namespace d3d
 		D3D12_DESCRIPTOR_HEAP_DESC defaultDesc = {};
 		if (!descriptHeapDesc)
 		{
-			defaultDesc.NumDescriptors = 4;
+			defaultDesc.NumDescriptors = static_cast<int>(DX12::ConstantBuffer::BufferSlot::ConstantBufferNum);
 			defaultDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 			defaultDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 			descriptHeapDesc = &defaultDesc;
@@ -392,7 +392,7 @@ namespace d3d
 		std::vector<std::shared_ptr<ID3D12Resource>> renderTargets;
 		renderTargets.reserve(renderTargetNum);
 		D3D12_CPU_DESCRIPTOR_HANDLE handle;
-		handle.ptr = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart().ptr;
+		handle = rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 		for (UINT i = 0; i < renderTargetNum; ++i)
 		{
 			ID3D12Resource* renderTarget;
@@ -769,7 +769,7 @@ namespace d3d
 		*frameIndex = swapChain->GetCurrentBackBufferIndex();
 	}
 
-	void UpdateD3D(
+	void BeginRendering(
 		ID3D12CommandAllocator* commandAllocator,
 		ID3D12GraphicsCommandList* commandList,
 		ID3D12PipelineState* pipeLineState,

@@ -65,7 +65,7 @@ private:
 public:
 	SequenceManager();
 	bool Update();
-	void Draw(ID3D12GraphicsCommandList* commandList);
+	void Render(ID3D12GraphicsCommandList* commandList);
 };
 
 #endif

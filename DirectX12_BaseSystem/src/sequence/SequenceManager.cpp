@@ -24,7 +24,7 @@ bool SequenceManager::Update(){
 	return continueFlag;
 }
 
-void SequenceManager::Draw(ID3D12GraphicsCommandList* commandList){
+void SequenceManager::Render(ID3D12GraphicsCommandList* commandList){
 	int drawableSequenceNum = 0;
 	for (auto& sequence : sequenceContainer)
 	{

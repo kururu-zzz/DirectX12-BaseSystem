@@ -272,7 +272,7 @@ namespace d3d
 	*/
 	D3D12_RECT CreateRect(LONG width, LONG height);
 
-	void UpdateD3D(
+	void BeginRendering(
 		ID3D12CommandAllocator* commandAllocator,
 		ID3D12GraphicsCommandList* commandList,
 		ID3D12PipelineState* pipeLineState,

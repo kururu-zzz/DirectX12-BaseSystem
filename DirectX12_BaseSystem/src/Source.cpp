@@ -65,8 +65,10 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 	semantics.emplace_back("IN_NORMAL", DXGI_FORMAT_R32G32B32_FLOAT);
 	semantics.emplace_back("IN_UV", DXGI_FORMAT_R32G32_FLOAT);
 
-	/*auto spritePipelineState = d3d::CreatePipelineState(
-		d3d::CreateInputLayout(semantics),
+	auto layout = d3d::CreateInputLayout(semantics);
+
+	auto spritePipelineState = d3d::CreatePipelineState(
+		layout,
 		rootSignature.get(),
 		d3d::CreateBlob("resource/shader/VS/Sprite.hlsl", "RenderVS", "vs_5_0").get(),
 		d3d::CreateBlob("resource/shader/GS/Sprite.hlsl", "RenderGS", "gs_5_0").get(),
@@ -74,13 +76,13 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 		nullptr,
 		nullptr,
 		d3d::CreateRasterizerDesc(),
-		d3d::CreateBlendDesc(d3d::BlendMode::default));*/
+		d3d::CreateBlendDesc(d3d::BlendMode::default));
 
 	//semantics.emplace_back("IN_BONEINDEX", DXGI_FORMAT_R32G32B32A32_UINT);
 	//semantics.emplace_back("IN_BONEWEIGHT", DXGI_FORMAT_R32G32B32A32_FLOAT);
-
+	
 	auto modelPipelineState = d3d::CreatePipelineState(
-		d3d::CreateInputLayout(semantics),
+		layout,
 		rootSignature.get(),
 		d3d::CreateBlob("resource/shader/VS/Model.hlsl", "RenderVS", "vs_5_0").get(),
 		d3d::CreateBlob("resource/shader/GS/Model.hlsl", "RenderGS", "gs_5_0").get(),
@@ -114,6 +116,8 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 
 	auto rect = d3d::CreateRect(static_cast<LONG>(wndWidth), static_cast<LONG>(wndHeight));
 
+	SequenceManager sequenceManager;
+
 	::ShowWindow(hWnd, SW_SHOW);
 	::UpdateWindow(hWnd);
 	ShowCursor(FALSE);
@@ -125,7 +129,10 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 			::DispatchMessage(&msg);
 		}
 		else {
-			d3d::UpdateD3D(
+
+			sequenceManager.Update();
+
+			d3d::BeginRendering(
 				commandAllocator.get(),
 				commandList.get(),
 				modelPipelineState.get(),
@@ -137,20 +144,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance,
 				rect,
 				frameIndex);
 
-			static SequenceManager sequenceManager;
-
-			sequenceManager.Update();
-
-			/*DirectX::XMFLOAT4X4 mtxViewport;
-			DirectX::XMStoreFloat4x4(&mtxViewport, DirectX::XMMatrixIdentity());
-			mtxViewport._11 = 2.f / 1200.f;
-			mtxViewport._22 = -2.0f / 900.f;
-			mtxViewport._41 = -1.f;
-			mtxViewport._42 = 1.0f;
-			DirectX::XMStoreFloat4x4(&mtxViewport, DirectX::XMMatrixTranspose(DirectX::XMLoadFloat4x4(&mtxViewport)));
-			DX12::ConstantBuffer::SetBuffer(commandList.get(), mtxViewport, DX12::ConstantBuffer::BufferSlot::Camera);*/
-
-			sequenceManager.Draw(commandList.get());
+			sequenceManager.Render(commandList.get());
 
 			d3d::EndRendering(
 				commandList.get(),

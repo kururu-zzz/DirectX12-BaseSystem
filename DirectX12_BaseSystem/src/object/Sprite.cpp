@@ -1,11 +1,23 @@
 #include "Sprite.h"
 #include "../core/d3d.h"
 #include "TextureContainer.h"
+#include "../core/ConstantBufferManager.h"
 
 using namespace DirectX;
 
 namespace DX12
 {
+	void SetConstantBuffer(ID3D12GraphicsCommandList* commandList)
+	{
+		DirectX::XMFLOAT4X4 mtxViewport;
+		DirectX::XMStoreFloat4x4(&mtxViewport, DirectX::XMMatrixIdentity());
+		mtxViewport._11 = 2.f / 1200.f;
+		mtxViewport._22 = -2.0f / 900.f;
+		mtxViewport._41 = -1.f;
+		mtxViewport._42 = 1.0f;
+		DirectX::XMStoreFloat4x4(&mtxViewport, DirectX::XMMatrixTranspose(DirectX::XMLoadFloat4x4(&mtxViewport)));
+		DX12::ConstantBuffer::SetBuffer(commandList, mtxViewport, DX12::ConstantBuffer::BufferSlot::World);
+	}
 	inline XMFLOAT3 operator+ (const XMFLOAT3& f1, const XMFLOAT3& f2)
 	{
 		return XMFLOAT3(f1.x + f2.x, f1.y + f2.y, f1.z + f2.z);
@@ -139,16 +151,17 @@ namespace DX12
 		});
 	}
 
-	void Sprite::Draw(ID3D12GraphicsCommandList* bundle){
+	void Sprite::Draw(ID3D12GraphicsCommandList* commandList){
 		SetVertexPos(vertex, pos, base, size, angle);
 		UpdateVertex(vertex.data(),vertexResource.get());
-		DX12::SetTexture(bundle,fileName);
+		SetConstantBuffer(commandList);
+		DX12::SetTexture(commandList,fileName);
 		
 		UINT SizeTbl[] = { sizeof(DefaultVertex) };
 		UINT OffsetTbl[] = { 0 };
-		bundle->IASetVertexBuffers(0, 1, &vertexBufferView);
-		bundle->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+		commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
+		commandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
 
-		bundle->DrawInstanced(4, 1, 0, 0);
+		commandList->DrawInstanced(4, 1, 0, 0);
 	}
 }

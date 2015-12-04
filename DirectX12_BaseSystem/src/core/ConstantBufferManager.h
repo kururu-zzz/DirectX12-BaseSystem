@@ -1,7 +1,9 @@
 #ifndef CONSTANTBUFFERMANAGER___
 #define CONSTANTBUFFERMANAGER___
 
-#include "d3d.h"
+struct ID3D12GraphicsCommandList;
+struct ID3D12Resource;
+struct ID3D12DescriptorHeap;
 
 namespace DX12
 {
@@ -12,11 +14,9 @@ namespace DX12
 			World,
 			Camera,
 			Material,
-			Light
+			Light,
+			ConstantBufferNum,
 		};
-		template<typename T_n>
-		std::shared_ptr<ID3D12Resource> CreateResource();
-
 		template<typename T_n>
 		void SetBuffer(ID3D12GraphicsCommandList* commandList, T_n& data, BufferSlot slotIndex);
 		ID3D12DescriptorHeap* GetDescriptorHeap();

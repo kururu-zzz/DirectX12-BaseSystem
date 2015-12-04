@@ -1,6 +1,7 @@
 #include "ConstantBufferManager.h"
 #include <DirectXMath.h>
 #include "../object/Camera.h"
+#include "d3d.h"
 
 namespace DX12
 {
@@ -55,12 +56,8 @@ namespace DX12
 			return descriptorHeap.get();
 		}
 		template void SetBuffer<DirectX::XMFLOAT4>(ID3D12GraphicsCommandList* commandList, DirectX::XMFLOAT4& data, BufferSlot slotIndex);
-		template std::shared_ptr<ID3D12Resource> CreateResource<DirectX::XMFLOAT4>();
 		template void SetBuffer<DirectX::XMFLOAT4X4>(ID3D12GraphicsCommandList* commandList, DirectX::XMFLOAT4X4& data, BufferSlot slotIndex);
-		template std::shared_ptr<ID3D12Resource> CreateResource<DirectX::XMFLOAT4X4>();
 		template void SetBuffer<Camera::CameraBuffer>(ID3D12GraphicsCommandList* commandList, Camera::CameraBuffer& data, BufferSlot slotIndex);
-		template std::shared_ptr<ID3D12Resource> CreateResource<Camera::CameraBuffer>();
 		template void SetBuffer<MaterialParam>(ID3D12GraphicsCommandList* commandList, MaterialParam& data, BufferSlot slotIndex);
-		template std::shared_ptr<ID3D12Resource> CreateResource<MaterialParam>();
 	}
 }

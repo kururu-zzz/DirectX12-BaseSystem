@@ -15,7 +15,7 @@ class Title : public Sequence
 private:
 	int time = 0;
 	std::shared_ptr<DX12::Camera> camera;
-	std::shared_ptr<DX12::Sprite> sprite;
+	std::vector<std::shared_ptr<DX12::Sprite>> sprites;
 	std::shared_ptr<DX12::Model> model;
 	std::shared_ptr<DX12::Model> objet;
 public:
